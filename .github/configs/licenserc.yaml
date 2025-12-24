@@ -1,0 +1,22 @@
+header:
+  license:
+    content: |
+      Copyright Cast To Cloud 2024-2026. All Rights Reserved.
+  paths:
+    - "Source/**"
+  license-location-threshold: 1
+  comment: never
+  language:
+    C++:
+      extensions:
+        - ".h"
+        - ".hpp"
+        - ".cpp"
+        - ".c"
+        - ".inl"
+        - ".mm"
+      comment_style_id: DoubleSlash
+    C#:
+      extensions:
+        - ".cs"
+      comment_style_id: DoubleSlash

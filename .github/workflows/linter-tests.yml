@@ -1,0 +1,42 @@
+name: Linter Tests
+
+on:
+  push:
+    paths:
+      - "Source/**"
+      - ".clang-format"
+      - ".github/workflows/linter-tests.yml"
+      - ".github/configs/licenserc.yaml"
+  pull_request:
+    paths:
+      - "Source/**"
+      - ".clang-format"
+      - ".github/workflows/linter-tests.yml"
+      - ".github/configs/licenserc.yaml"
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint (clang-format)
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+          shopt -s globstar nullglob
+          clang-format --dry-run --Werror Source/**/*.cpp Source/**/*.h
+
+  copyright-header:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copyright header
+        uses: apache/skywalking-eyes@v0.8.0
+        with:
+          config: .github/configs/licenserc.yaml
+          mode: check

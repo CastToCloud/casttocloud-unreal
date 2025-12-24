@@ -43,17 +43,19 @@ struct CASTTOCLOUD_API FCtcConfigurationSettings
 };
 
 static FCtcConfigurationSettings ProductionDedicatedServer = FCtcConfigurationSettings(
-	{.Flavors = {
-		 FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Server),
-		 FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Server),
-	 }}
+	{.Flavors =
+		 {
+			 FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Server),
+			 FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Server),
+		 }}
 );
 
 static FCtcConfigurationSettings ProductionGameClients = FCtcConfigurationSettings(
-	{.Flavors = {
-		 FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Game),
-		 FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Game),
-		 FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Client),
-		 FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Client),
-	 }}
+	{.Flavors =
+		 {
+			 FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Game),
+			 FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Game),
+			 FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Client),
+			 FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Client),
+		 }}
 );
