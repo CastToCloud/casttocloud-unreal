@@ -23,7 +23,17 @@
 		{
 			"Name": "CastToCloudAnalytics",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PreDefault"
+		},
+		{
+			"Name": "CastToCloudLogMonitor",
+			"Type": "Runtime",
+			"LoadingPhase": "None"
+		},
+		{
+			"Name": "CastToCloudPerformanceMonitor",
+			"Type": "Runtime",
+			"LoadingPhase": "None"
 		},
 		{
 			"Name": "CastToCloudEditor",
