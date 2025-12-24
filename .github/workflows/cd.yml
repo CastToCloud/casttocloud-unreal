@@ -1,0 +1,20 @@
+name: Plugin Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  plugin-cd:
+    uses:  outoftheboxplugins/BuildMachines/.github/workflows/release-to-github.yml@master
+    with:
+      plugin_name: "CastToCloud"
+      exclude_patterns: >
+        -x ".git/*"
+        -x ".gitignore"
+        -x ".clang-format"
+        -x ".github/*"
+        -x "LICENSE.md"
+
+    secrets: inherit
