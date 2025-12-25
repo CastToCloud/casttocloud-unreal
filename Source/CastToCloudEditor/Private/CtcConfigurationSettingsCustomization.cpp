@@ -115,7 +115,13 @@ void FCtcConfigurationSettingsCustomization::CustomizeChildren(TSharedRef<IPrope
 					}
 
 					PropertyHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
-				})];
+				})
+				.ToolTipText_Lambda([BuildConfiguration, BuildTarget]()
+				{
+					const FString ToolTipText = FString::Printf(TEXT("%s %s"), LexToString(BuildConfiguration), LexToString(BuildTarget));
+					return FText::FromString(ToolTipText);
+				})
+			];
 			// clang-format on
 		}
 	}
