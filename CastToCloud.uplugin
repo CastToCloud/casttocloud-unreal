@@ -7,8 +7,8 @@
 	"Category": "Cloud",
 	"CreatedBy": "CastToCloud",
 	"CreatedByURL": "https://casttocloud.com/",
-	"DocsURL": "",
-	"MarketplaceURL": "",
+	"DocsURL": "https://casttocloud.com/docs",
+	"FabURL": "com.epicgames.launcher://ue/Fab/product/05502f25-2938-4ba0-843c-198b63aba713",
 	"CanContainContent": false,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
@@ -18,15 +18,18 @@
 		{
 			"Name": "CastToCloud",
 			"Type": "Runtime",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux", "Android", "IOS" ],
 			"LoadingPhase": "Default"
 		},
 		{
 			"Name": "CastToCloudAnalytics",
 			"Type": "Runtime",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux", "Android", "IOS" ],
 			"LoadingPhase": "Default"
 		},
 		{
 			"Name": "CastToCloudEditor",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
 			"Type": "Editor",
 			"LoadingPhase": "Default"
 		}
