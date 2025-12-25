@@ -6,7 +6,7 @@
 
 class IAnalyticsProvider;
 
-class FCtcAnalytics final : public IAnalyticsProviderModule
+class FCtcAnalyticsModule final : public IAnalyticsProviderModule
 {
 	// ~Begin IAnalyticsProviderModule interface
 	virtual void StartupModule() override;

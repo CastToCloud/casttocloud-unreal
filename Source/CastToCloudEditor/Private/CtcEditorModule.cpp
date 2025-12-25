@@ -1,6 +1,6 @@
 // Copyright Cast To Cloud 2024-2026. All Rights Reserved.
 
-#include "CastToCloudEditor.h"
+#include "CtcEditorModule.h"
 
 #include <Editor.h>
 #include <HttpRequestHandler.h>
@@ -21,19 +21,19 @@
 #include "CtcSharedSettingsDetailsCustomization.h"
 
 
-TMap<FString, FCastToCloudEditorModule::FOnHttpRequestReceived> FCastToCloudEditorModule::OnHttpRequestReceived;
+TMap<FString, FCtcEditorModule::FOnHttpRequestReceived> FCtcEditorModule::OnHttpRequestReceived;
 
-void FCastToCloudEditorModule::RegisterHttpRequestHandler(const FString& Message, FOnHttpRequestReceived Delegate)
+void FCtcEditorModule::RegisterHttpRequestHandler(const FString& Message, FOnHttpRequestReceived Delegate)
 {
 	OnHttpRequestReceived.Emplace(Message, Delegate);
 }
 
-void FCastToCloudEditorModule::UnregisterHttpRequestHandler(const FString& Message)
+void FCtcEditorModule::UnregisterHttpRequestHandler(const FString& Message)
 {
 	OnHttpRequestReceived.Remove(Message);
 }
 
-void FCastToCloudEditorModule::StartupModule()
+void FCtcEditorModule::StartupModule()
 {
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	PropertyModule.RegisterCustomPropertyTypeLayout(FCtcConfigurationSettings::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FCtcConfigurationSettingsCustomization::MakeInstance));
@@ -50,7 +50,7 @@ void FCastToCloudEditorModule::StartupModule()
 	}
 }
 
-void FCastToCloudEditorModule::ShutdownModule()
+void FCtcEditorModule::ShutdownModule()
 {
 	if (FPropertyEditorModule* PropertyModule = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor"))
 	{
@@ -67,7 +67,7 @@ void FCastToCloudEditorModule::ShutdownModule()
 	}
 }
 
-void FCastToCloudEditorModule::RemovePublicKeyFromPackage()
+void FCtcEditorModule::RemovePublicKeyFromPackage()
 {
 	const FName PrivateApiKeyVariable = GET_MEMBER_NAME_CHECKED(UCtcSharedSettings, DeveloperApiKey);
 	const FString PrivateApiKey = PrivateApiKeyVariable.ToString();
@@ -82,7 +82,7 @@ void FCastToCloudEditorModule::RemovePublicKeyFromPackage()
 	}
 }
 
-void FCastToCloudEditorModule::RegisterToolbarExtension()
+void FCtcEditorModule::RegisterToolbarExtension()
 {
 	FToolMenuOwnerScoped OwnerScoped(this);
 
@@ -109,12 +109,12 @@ void FCastToCloudEditorModule::RegisterToolbarExtension()
 	);
 }
 
-void FCastToCloudEditorModule::UnregisterToolbarExtension()
+void FCtcEditorModule::UnregisterToolbarExtension()
 {
 	UToolMenus::UnregisterOwner(this);
 }
 
-void FCastToCloudEditorModule::StartHttpServer()
+void FCtcEditorModule::StartHttpServer()
 {
 	static const FString Endpoint = TEXT("/casttocloud");
 	static constexpr int32 Port = 9998;
@@ -123,19 +123,19 @@ void FCastToCloudEditorModule::StartHttpServer()
 	TSharedPtr<IHttpRouter> HttpRouter = HttpServerModule.GetHttpRouter(Port, true);
 
 	EHttpServerRequestVerbs Verbs = EHttpServerRequestVerbs::VERB_GET | EHttpServerRequestVerbs::VERB_POST | EHttpServerRequestVerbs::VERB_OPTIONS;
-	FHttpRequestHandler RequestCallback = FHttpRequestHandler::CreateRaw(this, &FCastToCloudEditorModule::HandleRequestReceived);
+	FHttpRequestHandler RequestCallback = FHttpRequestHandler::CreateRaw(this, &FCtcEditorModule::HandleRequestReceived);
 	HttpRouter->BindRoute(FHttpPath(Endpoint), Verbs, RequestCallback);
 
 	HttpServerModule.StartAllListeners();
 }
 
-void FCastToCloudEditorModule::StopHttpServer()
+void FCtcEditorModule::StopHttpServer()
 {
 	FHttpServerModule& HttpServerModule = FHttpServerModule::Get();
 	HttpServerModule.StopAllListeners();
 }
 
-bool FCastToCloudEditorModule::HandleRequestReceived(const FHttpServerRequest& Request, const FHttpResultCallback& OnComplete)
+bool FCtcEditorModule::HandleRequestReceived(const FHttpServerRequest& Request, const FHttpResultCallback& OnComplete)
 {
 	auto SendResponse = [OnComplete](TUniquePtr<FHttpServerResponse> Response)
 	{
@@ -176,4 +176,4 @@ bool FCastToCloudEditorModule::HandleRequestReceived(const FHttpServerRequest& R
 	return true;
 }
 
-IMPLEMENT_MODULE(FCastToCloudEditorModule, CastToCloudEditor)
+IMPLEMENT_MODULE(FCtcEditorModule, CastToCloudEditor)

@@ -4,6 +4,6 @@
 
 #include <Modules/ModuleManager.h>
 
-class FCastToCloudModule : public IModuleInterface
+class FCtcModule : public IModuleInterface
 {
 };

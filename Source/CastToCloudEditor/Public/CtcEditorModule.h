@@ -6,7 +6,7 @@
 #include <HttpServerRequest.h>
 #include <Modules/ModuleManager.h>
 
-class FCastToCloudEditorModule : public IModuleInterface
+class FCtcEditorModule : public IModuleInterface
 {
 public:
 	using FOnHttpRequestReceived = TDelegate<TUniquePtr<FHttpServerResponse>(const FHttpServerRequest& Request)>;

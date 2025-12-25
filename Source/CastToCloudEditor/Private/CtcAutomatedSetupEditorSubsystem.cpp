@@ -6,7 +6,7 @@
 #include <JsonObjectConverter.h>
 #include <Misc/MessageDialog.h>
 
-#include "CastToCloudEditor.h"
+#include "CtcEditorModule.h"
 #include "CtcSharedSettings.h"
 
 FString GetPayloadString(const TArray<uint8>& Payload)
@@ -22,8 +22,8 @@ void UCtcAutomatedSetupEditorSubsystem::Initialize(FSubsystemCollectionBase& Col
 {
 	Super::Initialize(Collection);
 
-	FCastToCloudEditorModule::FOnHttpRequestReceived HandleCallback = FCastToCloudEditorModule::FOnHttpRequestReceived::CreateUObject(this, &UCtcAutomatedSetupEditorSubsystem::OnHttpRequestReceived);
-	FCastToCloudEditorModule::RegisterHttpRequestHandler(TEXT("express-api-keys"), HandleCallback);
+	FCtcEditorModule::FOnHttpRequestReceived HandleCallback = FCtcEditorModule::FOnHttpRequestReceived::CreateUObject(this, &UCtcAutomatedSetupEditorSubsystem::OnHttpRequestReceived);
+	FCtcEditorModule::RegisterHttpRequestHandler(TEXT("express-api-keys"), HandleCallback);
 }
 
 TUniquePtr<FHttpServerResponse> UCtcAutomatedSetupEditorSubsystem::OnHttpRequestReceived(const FHttpServerRequest& Request)
