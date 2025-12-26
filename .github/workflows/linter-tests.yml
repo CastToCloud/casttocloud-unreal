@@ -15,6 +15,21 @@ on:
       - ".github/configs/licenserc.yaml"
 
 jobs:
+  editorconfig-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare EditorConfig file
+        run: mv .github/configs/.editorconfig .editorconfig
+
+      - name: Setup editorconfig-checker
+        uses: editorconfig-checker/action-editorconfig-checker@v2
+
+      - name: Run editorconfig-checker
+        run: editorconfig-checker
+
   clang-format:
     runs-on: ubuntu-latest
     steps:
