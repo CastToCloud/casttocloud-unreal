@@ -82,9 +82,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerPositionTracking", InvalidEnumValues = "Disabled"))
 	ECtcAnalyticsLocationTracking AutoPlayerPositionTrackingMethod = ECtcAnalyticsLocationTracking::PlayerPawnLocation;
 
+#if WITH_EDITOR
 	void ShowSettings();
+#endif
 
+#if WITH_EDITOR
 	void SaveToDefaultConfig();
+#endif
 
 private:
 	// Begin UDeveloperSettings interface

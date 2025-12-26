@@ -2,6 +2,7 @@
 
 #include "CtcSharedSettings.h"
 
+#include <HAL/FileManager.h>
 #include <ISettingsContainer.h>
 #include <ISettingsModule.h>
 #include <Misc/ConfigContext.h>
@@ -16,11 +17,12 @@ namespace
 {
 	const FName CastToCloudProviderName = TEXT("CastToCloudAnalytics");
 
+#if WITH_EDITOR
 	bool VerifyConfigIsWritable(const FString& ConfigPath)
 	{
 		bool bWriteAccess = !IFileManager::Get().IsReadOnly(*ConfigPath);
 
-		//NOTE: Regardless of writable access, if source control integration is enabled, we try to check out.
+		// NOTE: Regardless of writable access, if source control integration is enabled, we try to check out.
 		if (USourceControlHelpers::IsEnabled())
 		{
 			bWriteAccess |= USourceControlHelpers::CheckOutFile(ConfigPath);
@@ -28,10 +30,12 @@ namespace
 
 		return bWriteAccess;
 	}
-}
+#endif
+} // namespace
 
 void UCtcSharedSettings::SetupAnalyticsProvider()
 {
+#if WITH_EDITOR
 	const FString DefaultEngineIni = FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir() / TEXT("DefaultEngine.ini"));
 
 	if (!VerifyConfigIsWritable(DefaultEngineIni))
@@ -52,6 +56,7 @@ void UCtcSharedSettings::SetupAnalyticsProvider()
 	const FText SuccessTitle = INVTEXT("Success");
 	const FText SuccessMessage = FText::Format(INVTEXT("Provider set to {0}."), FText::FromName(CastToCloudProviderName));
 	FMessageDialog::Open(EAppMsgCategory::Success, EAppMsgType::Ok, SuccessMessage, SuccessTitle);
+#endif
 }
 
 bool UCtcSharedSettings::NeedsToSetAnalyticsProvider() const
@@ -62,12 +67,15 @@ bool UCtcSharedSettings::NeedsToSetAnalyticsProvider() const
 	return ProviderModuleName != CastToCloudProviderName;
 }
 
+#if WITH_EDITOR
 void UCtcSharedSettings::ShowSettings()
 {
 	ISettingsModule& SettingsModule = FModuleManager::LoadModuleChecked<ISettingsModule>("Settings");
 	SettingsModule.ShowViewer(GetContainerName(), GetCategoryName(), GetSectionName());
 }
+#endif
 
+#if WITH_EDITOR
 void UCtcSharedSettings::SaveToDefaultConfig()
 {
 	if (!VerifyConfigIsWritable(GetDefaultConfigFilename()))
@@ -80,11 +88,13 @@ void UCtcSharedSettings::SaveToDefaultConfig()
 
 	TryUpdateDefaultConfigFile();
 }
+#endif
 
 void UCtcSharedSettings::PostInitProperties()
 {
 	Super::PostInitProperties();
 
+#if WITH_EDITOR
 	ISettingsModule& SettingsModule = FModuleManager::GetModuleChecked<ISettingsModule>("Settings");
 	if (TSharedPtr<ISettingsContainer> SettingsContainer = SettingsModule.GetContainer(GetContainerName()))
 	{
@@ -92,4 +102,5 @@ void UCtcSharedSettings::PostInitProperties()
 		SettingsContainer->SetCategorySortPriority(TEXT("Game"), -0.6f);
 		SettingsContainer->SetCategorySortPriority(GetCategoryName(), -0.5f);
 	}
+#endif
 }
