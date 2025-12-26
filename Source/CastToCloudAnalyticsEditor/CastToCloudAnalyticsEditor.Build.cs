@@ -15,6 +15,7 @@ public class CastToCloudAnalyticsEditor : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"InputCore",
 				"WorkspaceMenuStructure",
 			}
 		);

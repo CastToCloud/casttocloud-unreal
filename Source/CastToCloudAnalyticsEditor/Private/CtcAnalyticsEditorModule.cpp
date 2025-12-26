@@ -3,7 +3,7 @@
 #include <WorkspaceMenuStructure.h>
 #include <WorkspaceMenuStructureModule.h>
 
-#include "SCtcEventsViewer.h"
+#include "SCtcAnalyticsEditorViewer.h"
 
 const FName EventsViewerTabName = TEXT("EventsViewer");
 
@@ -15,7 +15,6 @@ void FCtcAnalyticsEditorModule::StartupModule()
 		.SetGroup(WorkspaceMenu::GetMenuStructure().GetDeveloperToolsAuditCategory()) //TODO: make a custom category for us
 		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Audit"));
 	FGlobalTabmanager::Get()->RegisterDefaultTabWindowSize(EventsViewerTabName, FVector2D(1080, 600));
-
 }
 
 void FCtcAnalyticsEditorModule::ShutdownModule()
@@ -29,7 +28,7 @@ TSharedRef<SDockTab> FCtcAnalyticsEditorModule::SpawnEventsViewerTab(const FSpaw
 	TSharedRef <SDockTab> Tab = SNew(SDockTab)
 		.TabRole(NomadTab)
 		[
-			SNew(SCtcEventsViewer)
+			SNew(SCtcAnalyticsEditorViewer)
 		];
 	// clang-format on
 
