@@ -16,8 +16,5 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics", meta = (AutoCreateRefTerm = "Attributes"))
 	static void RecordEventWithCustomLocation(const FString& EventName, const FVector& Location, const TArray<FAnalyticsEventAttr>& Attributes);
 
-	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics", meta = (AutoCreateRefTerm = "Attributes"))
-	static void RecordEventWithNoLocation(const FString& EventName, const TArray<FAnalyticsEventAttr>& Attributes);
-
 	static void RecordEventWithPossibleLocation(const FString& EventName, const TOptional<FVector>& Location, const TArray<FAnalyticsEventAttr>& Attributes);
 };

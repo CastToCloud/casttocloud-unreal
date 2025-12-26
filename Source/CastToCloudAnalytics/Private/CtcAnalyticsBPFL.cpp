@@ -2,8 +2,7 @@
 
 #include "CtcAnalyticsBPFL.h"
 
-#include <Analytics.h>
-
+#include "CtcAnalyticsModule.h"
 #include "CtcAnalyticsProvider.h"
 
 // Stolen from AnalyticsBlueprintLibrary.cpp
@@ -23,30 +22,20 @@ namespace
 
 void UCtcAnalyticsBPFL::RecordEventWithCustomLocation(const FString& EventName, const FVector& Location, const TArray<FAnalyticsEventAttr>& Attributes)
 {
-	TSharedPtr<IAnalyticsProvider> Provider = FAnalytics::Get().GetDefaultConfiguredProvider();
-	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = StaticCastSharedPtr<FCtcAnalyticsProvider>(Provider))
-	{
-		CtcProvider->RecordEventWithCustomLocation(EventName, Location, ConvertAttrs(Attributes));
-	}
-}
-
-void UCtcAnalyticsBPFL::RecordEventWithNoLocation(const FString& EventName, const TArray<FAnalyticsEventAttr>& Attributes)
-{
-	TSharedPtr<IAnalyticsProvider> Provider = FAnalytics::Get().GetDefaultConfiguredProvider();
-	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = StaticCastSharedPtr<FCtcAnalyticsProvider>(Provider))
-	{
-		CtcProvider->RecordEventWithNoLocation(EventName, ConvertAttrs(Attributes));
-	}
+	RecordEventWithPossibleLocation(EventName, Location, Attributes);
 }
 
 void UCtcAnalyticsBPFL::RecordEventWithPossibleLocation(const FString& EventName, const TOptional<FVector>& Location, const TArray<FAnalyticsEventAttr>& Attributes)
 {
-	if (Location.IsSet())
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
 	{
-		RecordEventWithCustomLocation(EventName, *Location, Attributes);
-	}
-	else
-	{
-		RecordEventWithNoLocation(EventName, Attributes);
+		if (Location.IsSet())
+		{
+			CtcProvider->RecordEventWithCustomLocation(EventName, *Location, ConvertAttrs(Attributes));
+		}
+		else 
+		{
+			CtcProvider->RecordEvent(EventName, ConvertAttrs(Attributes));
+		}
 	}
 }

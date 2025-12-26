@@ -49,32 +49,38 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Shared", meta = (AllowedSensitivity = "low"))
 	FCtcApiKey RuntimeApiKey;
 
-	UPROPERTY(Config, EditAnywhere, Category = "Analytics")
-	FCtcConfigurationSettings AllowedExecutables = ProductionGameClients;
-
-	UPROPERTY(Config, EditAnywhere, Category = "Analytics")
-	bool bAutoStartSession = true;
-
-	UPROPERTY(Config, EditAnywhere, Category = "Analytics")
-	bool bAutomatedWorldChangeTracking = true;
-
-	UPROPERTY(Config, EditAnywhere, Category = "Analytics")
-	bool bAutomatedGeoTracking = true;
-
-	UPROPERTY(Config, EditAnywhere, Category = "Analytics")
-	ECtcAnalyticsLocationTracking AutomatedLocationTracking = ECtcAnalyticsLocationTracking::Disabled;
-
-	UPROPERTY(Config, EditAnywhere, Category = "Analytics")
-	float SendInterval = 60.0f;
-
-	UPROPERTY(Config)
-	FString PlatformAttribution = TEXT("");
-
 	UFUNCTION(Category = "Analytics", meta = (CallInSettings, CanCallInSettings = NeedsToSetAnalyticsProvider, DisplayName = "Setup Analytics Provider"))
 	void SetupAnalyticsProvider();
 
 	UFUNCTION(Category = "Analytics")
 	bool NeedsToSetAnalyticsProvider() const;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Sending")
+	FCtcConfigurationSettings AllowedExecutables = ProductionGameClients;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Sending", meta = (Units="s"))
+	float SendInterval = 60.0f;
+
+	UPROPERTY(Config, BlueprintReadOnly, Category = "Analytics|Attribution")
+	FString PlatformAttribution = TEXT("");
+
+	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Attribution")
+	bool bEnableGeolocationAttribution = true;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking")
+	bool bAutoStartSession = true;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking")
+	bool bAutoWorldChangeTracking = true;
+
+	UPROPERTY(Config, EditAnywhere, Category="Analytics|AutoTracking")
+	bool bAutoPlayerPositionTracking = false;
+
+	UPROPERTY(EditAnywhere, Category="Analytics|AutoTracking", meta=(editcondition = "bAutoPlayerPositionTracking", Units="s"))
+	float AutoPlayerPositionTrackingInterval = 10.0f;
+
+	UPROPERTY(EditAnywhere, Category="Analytics|AutoTracking", meta=(editcondition = "bAutoPlayerPositionTracking", InvalidEnumValues="Disabled"))
+	ECtcAnalyticsLocationTracking AutoPlayerPositionTrackingMethod = ECtcAnalyticsLocationTracking::PlayerPawnLocation;
 
 	void ShowSettings();
 
@@ -86,4 +92,6 @@ private:
 	virtual FName GetContainerName() const override { return TEXT("Project"); }
 	virtual FName GetCategoryName() const override { return TEXT("Cast To Cloud"); }
 	// End UDeveloperSettings interface
+
+
 };

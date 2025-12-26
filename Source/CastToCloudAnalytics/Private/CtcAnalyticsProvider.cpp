@@ -114,12 +114,7 @@ void FCtcAnalyticsProvider::RecordEventWithCustomLocation(const FString& EventNa
 	RecordEventInternal(EventName, InputLocation, Attributes);
 }
 
-void FCtcAnalyticsProvider::RecordEventWithNoLocation(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes)
-{
-	TOptional<FVector> NoLocation;
-	RecordEventInternal(EventName, NoLocation, Attributes);
-}
-
+#if !UE_BUILD_SHIPPING
 TArray<FString> FCtcAnalyticsProvider::GetDebugState() const
 {
 	TArray<FString> InfoLines;
@@ -136,6 +131,7 @@ TArray<FString> FCtcAnalyticsProvider::GetDebugState() const
 
 	return InfoLines;
 }
+#endif
 
 bool FCtcAnalyticsProvider::StartSession(const TArray<FAnalyticsEventAttribute>& Attributes)
 {
@@ -213,25 +209,8 @@ FAnalyticsEventAttribute FCtcAnalyticsProvider::GetDefaultEventAttribute(int Att
 
 void FCtcAnalyticsProvider::RecordEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes)
 {
-	TOptional<FVector> AutomatedLocation;
-
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (Settings->AutomatedLocationTracking == ECtcAnalyticsLocationTracking::PlayerPawnLocation)
-	{
-		if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GWorld, 0))
-		{
-			AutomatedLocation = PlayerPawn->GetActorLocation();
-		}
-	}
-	else if (Settings->AutomatedLocationTracking == ECtcAnalyticsLocationTracking::CameraLocation)
-	{
-		if (const APlayerCameraManager* CameraManager = UGameplayStatics::GetPlayerCameraManager(GWorld, 0))
-		{
-			AutomatedLocation = CameraManager->GetCameraLocation();
-		}
-	}
-
-	RecordEventInternal(EventName, AutomatedLocation, Attributes);
+	TOptional<FVector> NoLocation;
+	RecordEventInternal(EventName, NoLocation, Attributes);
 }
 
 void FCtcAnalyticsProvider::RefreshBuiltInAttributes()
@@ -394,7 +373,7 @@ void FCtcAnalyticsProvider::SendCachedEvents(bool bWait)
 
 	TSharedRef<FJsonObject> RequestBody = MakeShared<FJsonObject>();
 	RequestBody->SetArrayField(TEXT("eventsPayload"), EventsArray);
-	RequestBody->SetBoolField(TEXT("geoTracking"), Settings->bAutomatedGeoTracking);
+	RequestBody->SetBoolField(TEXT("geoTracking"), Settings->bEnableGeolocationAttribution);
 
 	FString RequestBodyString;
 	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBodyString);
@@ -504,7 +483,7 @@ void FCtcAnalyticsProvider::OnApplicationWillTerminate()
 void FCtcAnalyticsProvider::OnWorldBeginPlay(UWorld* World)
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (!Settings->bAutomatedWorldChangeTracking)
+	if (!Settings->bAutoWorldChangeTracking)
 	{
 		return;
 	}
@@ -526,7 +505,7 @@ void FCtcAnalyticsProvider::OnWorldBeginPlay(UWorld* World)
 void FCtcAnalyticsProvider::OnWorldEndPlay(UWorld* World)
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (!Settings->bAutomatedWorldChangeTracking)
+	if (!Settings->bAutoWorldChangeTracking)
 	{
 		return;
 	}

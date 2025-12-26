@@ -15,12 +15,7 @@ class CASTTOCLOUDANALYTICS_API FCtcAnalyticsProvider : public IAnalyticsProvider
 public:
 	FCtcAnalyticsProvider();
 
-	void RecordEventWithCustomLocation(const FString& EventName, const FVector& Location, const TArray<FAnalyticsEventAttribute>& Attributes);
-	void RecordEventWithNoLocation(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes);
 
-	TArray<FString> GetDebugState() const;
-
-private:
 	// ~Begin IAnalyticsProvider interface
 	virtual bool StartSession(const TArray<FAnalyticsEventAttribute>& Attributes) override;
 	virtual void EndSession() override;
@@ -35,6 +30,14 @@ private:
 	virtual FAnalyticsEventAttribute GetDefaultEventAttribute(int AttributeIndex) const override;
 	virtual void RecordEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes) override;
 	// ~End IAnalyticsProvider interface
+
+	void RecordEventWithCustomLocation(const FString& EventName, const FVector& Location, const TArray<FAnalyticsEventAttribute>& Attributes);
+
+#if !UE_BUILD_SHIPPING
+	TArray<FString> GetDebugState() const;
+#endif
+
+private:
 
 	/**
 	 * Internal Record Event function used by all possible tracking methods

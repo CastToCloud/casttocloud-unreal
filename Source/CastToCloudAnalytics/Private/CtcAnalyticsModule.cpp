@@ -4,6 +4,11 @@
 
 #include "CtcAnalyticsProvider.h"
 
+FCtcAnalyticsModule& FCtcAnalyticsModule::Get()
+{
+	return FModuleManager::LoadModuleChecked<FCtcAnalyticsModule>(TEXT("CastToCloudAnalytics"));
+}
+
 void FCtcAnalyticsModule::StartupModule()
 {
 	AnalyticsProvider = MakeShared<FCtcAnalyticsProvider>();

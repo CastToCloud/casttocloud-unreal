@@ -4,15 +4,21 @@
 
 #include <Interfaces/IAnalyticsProviderModule.h>
 
-class IAnalyticsProvider;
+class FCtcAnalyticsProvider;
 
 class FCtcAnalyticsModule final : public IAnalyticsProviderModule
 {
+public:
+	static FCtcAnalyticsModule& Get();
+
+	TSharedPtr<FCtcAnalyticsProvider> GetProvider() const { return AnalyticsProvider; }
+
+private:
 	// ~Begin IAnalyticsProviderModule interface
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	virtual TSharedPtr<IAnalyticsProvider> CreateAnalyticsProvider(const FAnalyticsProviderConfigurationDelegate& GetConfigValue) const override;
 	// ~End IAnalyticsProviderModule interface
 
-	TSharedPtr<IAnalyticsProvider> AnalyticsProvider;
+	TSharedPtr<FCtcAnalyticsProvider> AnalyticsProvider;
 };
