@@ -16,6 +16,8 @@ public class CastToCloudAnalyticsEditor : ModuleRules
 				"Slate",
 				"SlateCore",
 				"InputCore",
+				"DesktopWidgets",
+				"UnrealEd",
 				"WorkspaceMenuStructure",
 			}
 		);

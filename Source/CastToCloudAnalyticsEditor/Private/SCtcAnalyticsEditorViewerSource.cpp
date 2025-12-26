@@ -3,6 +3,8 @@
 #include "SCtcAnalyticsEditorViewerSource.h"
 
 #include <Widgets/Layout/SWidgetSwitcher.h>
+#include <Widgets/Input/SFilePathPicker.h>
+#include <EditorDirectories.h>
 
 namespace
 {
@@ -48,8 +50,15 @@ void SCtcAnalyticsEditorViewerSource::Construct(const FArguments& InArgs)
 	SourceWidgetSwitcher->AddSlot(GetEditorSourceAsIndex(ECtcAnalyticsEditorSource::FromFile))
 	// clang-format off
 	[
-		SNew(STextBlock)
-		.Text(INVTEXT("From file"))
+		SNew(SFilePathPicker)
+		.BrowseButtonImage(FAppStyle::GetBrush("PropertyWindow.Button_Ellipsis"))
+		.BrowseButtonStyle(FAppStyle::Get(), "HoverHintOnly")
+		.BrowseButtonToolTip(INVTEXT("Choose a source import file"))
+		.BrowseDirectory(this, &SCtcAnalyticsEditorViewerSource::HandleFilePathBrowseDirectory)
+		.BrowseTitle(INVTEXT("Source import file picker..."))
+		.FilePath(this, &SCtcAnalyticsEditorViewerSource::GetBinaryPathString)
+		.FileTypeFilter(TEXT("All files (*.*)|*.*"))
+		.OnPathPicked(this, &SCtcAnalyticsEditorViewerSource::OnBinaryPathPicked)
 	];
 	// clang-format on
 
@@ -83,9 +92,36 @@ void SCtcAnalyticsEditorViewerSource::Construct(const FArguments& InArgs)
 		]
 
 		+SVerticalBox::Slot()
+		.AutoHeight()
 		[
 			SourceWidgetSwitcher.ToSharedRef()
 		]
 	];
 	// clang-format on
+}
+
+FString SCtcAnalyticsEditorViewerSource::GetBinaryPathString() const
+{
+return FilePath;
+}
+
+void SCtcAnalyticsEditorViewerSource::OnBinaryPathPicked( const FString& PickedPath )
+{
+	FilePath = FPaths::ConvertRelativePathToFull(PickedPath);;
+}
+
+FString SCtcAnalyticsEditorViewerSource::HandleFilePathBrowseDirectory() const
+{
+	if (!FilePath.IsEmpty())
+	{
+		return FPaths::GetPath(FilePath);
+	}
+
+	FString DefaultDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("CastToCloud") / TEXT("Analytics"));
+	if (FPaths::DirectoryExists(DefaultDirectory))
+	{
+		return DefaultDirectory;
+	}
+
+	return FEditorDirectories::Get().GetLastDirectory(ELastDirectory::GENERIC_OPEN);
 }
