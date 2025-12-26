@@ -3,6 +3,8 @@
 #include <WorkspaceMenuStructure.h>
 #include <WorkspaceMenuStructureModule.h>
 
+#include "SCtcEventsViewer.h"
+
 const FName EventsViewerTabName = TEXT("EventsViewer");
 
 void FCtcAnalyticsEditorModule::StartupModule()
@@ -23,21 +25,15 @@ void FCtcAnalyticsEditorModule::ShutdownModule()
 
 TSharedRef<SDockTab> FCtcAnalyticsEditorModule::SpawnEventsViewerTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-	TSharedRef<SDockTab> DockTab = SAssignNew(AssetAuditTab, SDockTab)
-		.TabRole(ETabRole::NomadTab)
+	// clang-format off
+	TSharedRef <SDockTab> Tab = SNew(SDockTab)
+		.TabRole(NomadTab)
 		[
-			SAssignNew(AssetAuditUI, SAssetAuditBrowser)
+			SNew(SCtcEventsViewer)
 		];
+	// clang-format on
 
-	DockTab->SetOnTabClosed(SDockTab::FOnTabClosedCallback::CreateLambda([this](TSharedRef<SDockTab>)
-		{
-			if (AssetAuditUI.IsValid())
-			{
-				AssetAuditUI.Pin()->OnClose();
-			}
-		}));
-
-	return DockTab;
+	return Tab;
 }
 
 IMPLEMENT_MODULE(FCtcAnalyticsEditorModule, CastToCloudAnalyticsEditor)
