@@ -8,14 +8,40 @@
 #include <Misc/MessageDialog.h>
 #include <Modules/ModuleManager.h>
 
+#if WITH_EDITOR
+#include <SourceControlHelpers.h>
+#endif
+
 namespace
 {
 	const FName CastToCloudProviderName = TEXT("CastToCloudAnalytics");
+
+	bool VerifyConfigIsWritable(const FString& ConfigPath)
+	{
+		bool bWriteAccess = !IFileManager::Get().IsReadOnly(*ConfigPath);
+
+		//NOTE: Regardless of writable access, if source control integration is enabled, we try to check out.
+		if (USourceControlHelpers::IsEnabled())
+		{
+			bWriteAccess |= USourceControlHelpers::CheckOutFile(ConfigPath);
+		}
+
+		return bWriteAccess;
+	}
 }
 
 void UCtcSharedSettings::SetupAnalyticsProvider()
 {
 	const FString DefaultEngineIni = FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir() / TEXT("DefaultEngine.ini"));
+
+	if (!VerifyConfigIsWritable(DefaultEngineIni))
+	{
+		const FText FailureTitle = INVTEXT("Failed");
+		const FText FailureMessage = FText::Format(INVTEXT("Failed to set Provider to {0}. File is not writeable"), FText::FromName(CastToCloudProviderName));
+		FMessageDialog::Open(EAppMsgCategory::Error, EAppMsgType::Ok, FailureMessage, FailureTitle);
+		return;
+	}
+
 	FConfigCacheIni Config(EConfigCacheType::Temporary);
 	FConfigFile& NewFile = Config.Add(DefaultEngineIni, FConfigFile());
 	NewFile.SetString(TEXT("Analytics"), TEXT("ProviderModuleName"), *CastToCloudProviderName.ToString());
@@ -44,6 +70,14 @@ void UCtcSharedSettings::ShowSettings()
 
 void UCtcSharedSettings::SaveToDefaultConfig()
 {
+	if (!VerifyConfigIsWritable(GetDefaultConfigFilename()))
+	{
+		const FText FailureTitle = INVTEXT("Failed");
+		const FText FailureMessage = INVTEXT("Failed to save default config. File is not writeable");
+		FMessageDialog::Open(EAppMsgCategory::Error, EAppMsgType::Ok, FailureMessage, FailureTitle);
+		return;
+	}
+
 	TryUpdateDefaultConfigFile();
 }
 

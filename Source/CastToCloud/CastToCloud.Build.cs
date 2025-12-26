@@ -18,5 +18,10 @@ public class CastToCloud : ModuleRules
 				"SlateCore",
 			}
 		);
+
+		if (Target.bBuildEditor)
+		{
+			PublicDependencyModuleNames.Add("SourceControl");
+		}
 	}
 }
