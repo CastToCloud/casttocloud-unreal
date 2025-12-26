@@ -6,6 +6,7 @@ public class CastToCloudAnalyticsEditor : ModuleRules
 {
 	public CastToCloudAnalyticsEditor(ReadOnlyTargetRules Target) : base(Target)
 	{
+		
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
@@ -13,7 +14,8 @@ public class CastToCloudAnalyticsEditor : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"Slate",
-				"SlateCore"
+				"SlateCore",
+				"WorkspaceMenuStructure",
 			}
 		);
 	}

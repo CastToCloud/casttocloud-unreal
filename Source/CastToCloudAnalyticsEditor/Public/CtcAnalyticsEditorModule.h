@@ -8,4 +8,6 @@ class FCtcAnalyticsEditorModule : public IModuleInterface
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	// ~End IModuleInterface interface
+
+	TSharedRef<SDockTab> SpawnEventsViewerTab(const FSpawnTabArgs& SpawnTabArgs);
 };
