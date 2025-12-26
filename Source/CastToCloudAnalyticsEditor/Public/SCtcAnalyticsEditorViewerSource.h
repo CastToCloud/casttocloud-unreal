@@ -18,10 +18,10 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+
 	FString GetBinaryPathString() const;
 	void OnBinaryPathPicked(const FString& PickedPath);
 	FString HandleFilePathBrowseDirectory() const;
-
 
 private:
 	TSharedPtr<SComboBox<TSharedPtr<ECtcAnalyticsEditorSource>>> SourceComboBox;

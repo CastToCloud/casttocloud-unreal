@@ -6,13 +6,10 @@
 
 void SCtcAnalyticsEditorViewer::Construct(const FArguments& InArgs)
 {
-	
-	
-
 	// clang-format off
 	ChildSlot
 	[
-		SNew(SCtcAnalyticsEditorViewerSource)
+		SAssignNew(ViewerSource, SCtcAnalyticsEditorViewerSource)
 	];
 	// clang-format on
 }

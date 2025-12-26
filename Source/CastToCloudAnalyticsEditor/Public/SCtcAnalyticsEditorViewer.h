@@ -4,6 +4,8 @@
 
 #include <Widgets/SCompoundWidget.h>
 
+class SCtcAnalyticsEditorViewerSource;
+
 class SCtcAnalyticsEditorViewer : public SCompoundWidget
 {
 public:
@@ -13,11 +15,5 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
-	enum EDataSource
-	{
-		FromApi = 0,
-		FromFile
-	};
-
-	
+	TSharedPtr<SCtcAnalyticsEditorViewerSource> ViewerSource;
 };

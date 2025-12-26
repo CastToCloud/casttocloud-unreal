@@ -102,7 +102,7 @@ void SCtcAnalyticsEditorViewerSource::Construct(const FArguments& InArgs)
 
 FString SCtcAnalyticsEditorViewerSource::GetBinaryPathString() const
 {
-return FilePath;
+	return FilePath;
 }
 
 void SCtcAnalyticsEditorViewerSource::OnBinaryPathPicked( const FString& PickedPath )
@@ -112,6 +112,7 @@ void SCtcAnalyticsEditorViewerSource::OnBinaryPathPicked( const FString& PickedP
 
 FString SCtcAnalyticsEditorViewerSource::HandleFilePathBrowseDirectory() const
 {
+	// There is a high chance there are most from where this came from
 	if (!FilePath.IsEmpty())
 	{
 		return FPaths::GetPath(FilePath);
@@ -120,8 +121,10 @@ FString SCtcAnalyticsEditorViewerSource::HandleFilePathBrowseDirectory() const
 	FString DefaultDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("CastToCloud") / TEXT("Analytics"));
 	if (FPaths::DirectoryExists(DefaultDirectory))
 	{
+		// The user might know not know where these are stored, so let's show him the path initially
 		return DefaultDirectory;
 	}
 
+	//Fallback to last opened folder
 	return FEditorDirectories::Get().GetLastDirectory(ELastDirectory::GENERIC_OPEN);
 }
