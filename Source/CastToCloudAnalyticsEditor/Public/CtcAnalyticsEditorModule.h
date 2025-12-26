@@ -5,7 +5,7 @@
 class FCtcAnalyticsEditorModule : public IModuleInterface
 {
 	// ~Begin IModuleInterface interface
-    virtual void StartupModule() override;
-    virtual void ShutdownModule() override;
+	virtual void StartupModule() override;
+	virtual void ShutdownModule() override;
 	// ~End IModuleInterface interface
 };

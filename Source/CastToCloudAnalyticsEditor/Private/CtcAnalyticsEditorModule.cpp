@@ -1,13 +1,13 @@
-﻿#include "CtctAnalyticsEditorModule.h"
+﻿#include "CtcAnalyticsEditorModule.h"
 
 void FCtcAnalyticsEditorModule::StartupModule()
 {
-    
+	
 }
 
 void FCtcAnalyticsEditorModule::ShutdownModule()
 {
-    
+	
 }
 
 IMPLEMENT_MODULE(FCtcAnalyticsEditorModule, CastToCloudAnalyticsEditor)
