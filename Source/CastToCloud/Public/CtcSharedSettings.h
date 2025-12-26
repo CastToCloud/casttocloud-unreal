@@ -58,7 +58,7 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Sending")
 	FCtcConfigurationSettings AllowedExecutables = ProductionGameClients;
 
-	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Sending", meta = (Units="s"))
+	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Sending", meta = (Units = "s"))
 	float SendInterval = 60.0f;
 
 	UPROPERTY(Config, BlueprintReadOnly, Category = "Analytics|Attribution")
@@ -73,13 +73,13 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking")
 	bool bAutoWorldChangeTracking = true;
 
-	UPROPERTY(Config, EditAnywhere, Category="Analytics|AutoTracking")
+	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking")
 	bool bAutoPlayerPositionTracking = false;
 
-	UPROPERTY(EditAnywhere, Category="Analytics|AutoTracking", meta=(editcondition = "bAutoPlayerPositionTracking", Units="s"))
+	UPROPERTY(EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerPositionTracking", Units = "s"))
 	float AutoPlayerPositionTrackingInterval = 10.0f;
 
-	UPROPERTY(EditAnywhere, Category="Analytics|AutoTracking", meta=(editcondition = "bAutoPlayerPositionTracking", InvalidEnumValues="Disabled"))
+	UPROPERTY(EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerPositionTracking", InvalidEnumValues = "Disabled"))
 	ECtcAnalyticsLocationTracking AutoPlayerPositionTrackingMethod = ECtcAnalyticsLocationTracking::PlayerPawnLocation;
 
 	void ShowSettings();
@@ -92,6 +92,4 @@ private:
 	virtual FName GetContainerName() const override { return TEXT("Project"); }
 	virtual FName GetCategoryName() const override { return TEXT("Cast To Cloud"); }
 	// End UDeveloperSettings interface
-
-
 };

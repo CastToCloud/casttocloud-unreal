@@ -8,6 +8,15 @@
 
 #include "CtcAnalyticsAutoTrackerSubsystem.generated.h"
 
+struct FIntervalTracker
+{
+	bool HasFinished() const { return TimeLeft < 0.0f; }
+	void Tick(float DeltaTime) { TimeLeft -= DeltaTime; }
+	void Reset(float FullTime) { TimeLeft = FullTime; }
+
+	float TimeLeft = FLT_MIN;
+};
+
 UCLASS()
 class CASTTOCLOUDANALYTICS_API UCtcAnalyticsAutoTrackerSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
 {
@@ -50,8 +59,14 @@ class CASTTOCLOUDANALYTICS_API UCtcAnalyticsAutoTrackerSubsystem : public UGameI
 	 */
 	UFUNCTION()
 	void OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn);
+	/**
+	 * Called every frame to update the automated player position tracking
+	 */
+	void TickPlayerPositionTracking(float DeltaTime);
 
 #if PLATFORM_WINDOWS
 	TUniquePtr<FCtcWindowsMessageHandler> WindowsMessageHandler;
 #endif
+
+	FIntervalTracker SendPlayerPositionInterval;
 };

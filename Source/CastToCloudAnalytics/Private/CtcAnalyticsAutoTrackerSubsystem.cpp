@@ -11,6 +11,7 @@
 #include <Null/NullPlatformApplicationMisc.h>
 
 #include "CtcAnalyticsBPFL.h"
+#include "CtcSharedSettings.h"
 
 void UCtcAnalyticsAutoTrackerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -30,6 +31,7 @@ void UCtcAnalyticsAutoTrackerSubsystem::Deinitialize()
 
 void UCtcAnalyticsAutoTrackerSubsystem::Tick(float DeltaTime)
 {
+	TickPlayerPositionTracking(DeltaTime);
 }
 
 ETickableTickType UCtcAnalyticsAutoTrackerSubsystem::GetTickableTickType() const
@@ -135,12 +137,47 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnPossessedPawnChanged(APawn* OldPawn, A
 		return TEXT("PlayerPawnPossess Unknown");
 	}();
 
-	const APawn* RelevantPawn = NewPawn
-		? NewPawn
-		: OldPawn;
-	const TOptional<FVector> RelevantPosition = RelevantPawn
-		? RelevantPawn->GetActorLocation()
-		: TOptional<FVector>();
+	const APawn* RelevantPawn = NewPawn ? NewPawn : OldPawn;
+	const TOptional<FVector> RelevantPosition = RelevantPawn ? RelevantPawn->GetActorLocation() : TOptional<FVector>();
 
 	UCtcAnalyticsBPFL::RecordEventWithPossibleLocation(EventType, RelevantPosition, {});
+}
+
+void UCtcAnalyticsAutoTrackerSubsystem::TickPlayerPositionTracking(float DeltaTime)
+{
+	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
+	if (!Settings->bAutoPlayerPositionTracking)
+	{
+		return;
+	}
+
+	SendPlayerPositionInterval.Tick(DeltaTime);
+	if (!SendPlayerPositionInterval.HasFinished())
+	{
+		return;
+	}
+
+	TOptional<FVector> AutomatedLocation;
+
+	if (Settings->AutoPlayerPositionTrackingMethod == ECtcAnalyticsLocationTracking::PlayerPawnLocation)
+	{
+		if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
+		{
+			AutomatedLocation = PlayerPawn->GetActorLocation();
+		}
+	}
+	else if (Settings->AutoPlayerPositionTrackingMethod == ECtcAnalyticsLocationTracking::CameraLocation)
+	{
+		if (const APlayerCameraManager* CameraManager = UGameplayStatics::GetPlayerCameraManager(this, 0))
+		{
+			AutomatedLocation = CameraManager->GetCameraLocation();
+		}
+	}
+
+	if (AutomatedLocation.IsSet())
+	{
+		UCtcAnalyticsBPFL::RecordEventWithCustomLocation(TEXT("PlayerPosition"), *AutomatedLocation, {});
+	}
+
+	SendPlayerPositionInterval.Reset(Settings->AutoPlayerPositionTrackingInterval);
 }

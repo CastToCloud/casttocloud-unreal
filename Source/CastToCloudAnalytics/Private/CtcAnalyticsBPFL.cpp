@@ -33,7 +33,7 @@ void UCtcAnalyticsBPFL::RecordEventWithPossibleLocation(const FString& EventName
 		{
 			CtcProvider->RecordEventWithCustomLocation(EventName, *Location, ConvertAttrs(Attributes));
 		}
-		else 
+		else
 		{
 			CtcProvider->RecordEvent(EventName, ConvertAttrs(Attributes));
 		}

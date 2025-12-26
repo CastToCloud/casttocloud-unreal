@@ -38,7 +38,6 @@ public:
 #endif
 
 private:
-
 	/**
 	 * Internal Record Event function used by all possible tracking methods
 	 */
