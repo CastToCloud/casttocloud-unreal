@@ -6,10 +6,10 @@
 
 #include "CtcAnalyticsWindowsMessageHandler.h"
 
-#include "CtcAnalyticsNotifierSubsystem.generated.h"
+#include "CtcAnalyticsAutoTrackerSubsystem.generated.h"
 
 UCLASS()
-class CASTTOCLOUDANALYTICS_API UCtcAnalyticsNotifierSubsystem : public UGameInstanceSubsystem
+class CASTTOCLOUDANALYTICS_API UCtcAnalyticsAutoTrackerSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
 {
 	GENERATED_BODY()
 
@@ -17,8 +17,16 @@ class CASTTOCLOUDANALYTICS_API UCtcAnalyticsNotifierSubsystem : public UGameInst
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 	// ~End UGameInstanceSubsystem interface
+
+	// FTickableGameObject interface
+	virtual void Tick(float DeltaTime) override;
+	virtual ETickableTickType GetTickableTickType() const override;
+	virtual TStatId GetStatId() const override;
+	virtual UWorld* GetTickableGameObjectWorld() const override;
+	// ~FTickableGameObject interface
+
 	/**
-	 * Registes the more complex application delegates when possible
+	 * Registers the more complex application delegates when possible
 	 */
 	void RegisterApplicationEvents();
 	/**

@@ -1,6 +1,6 @@
 // Copyright Cast To Cloud 2024-2026. All Rights Reserved.
 
-#include "CtcAnalyticsNotifierSubsystem.h"
+#include "CtcAnalyticsAutoTrackerSubsystem.h"
 
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
@@ -12,23 +12,43 @@
 
 #include "CtcAnalyticsBPFL.h"
 
-void UCtcAnalyticsNotifierSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+void UCtcAnalyticsAutoTrackerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
 	RegisterApplicationEvents();
 
-	GetGameInstance()->OnLocalPlayerAddedEvent.AddUObject(this, &UCtcAnalyticsNotifierSubsystem::OnLocalPlayerAdded);
+	GetGameInstance()->OnLocalPlayerAddedEvent.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnLocalPlayerAdded);
 }
 
-void UCtcAnalyticsNotifierSubsystem::Deinitialize()
+void UCtcAnalyticsAutoTrackerSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
 
 	UnregisterApplicationEvents();
 }
 
-void UCtcAnalyticsNotifierSubsystem::RegisterApplicationEvents()
+void UCtcAnalyticsAutoTrackerSubsystem::Tick(float DeltaTime)
+{
+}
+
+ETickableTickType UCtcAnalyticsAutoTrackerSubsystem::GetTickableTickType() const
+{
+	const bool bIsCDO = HasAnyFlags(RF_ClassDefaultObject);
+	return !bIsCDO ? ETickableTickType::Always : ETickableTickType::Never;
+}
+
+TStatId UCtcAnalyticsAutoTrackerSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UCtcAnalyticsAutoTrackerSubsystem, STATGROUP_Tickables);
+}
+
+UWorld* UCtcAnalyticsAutoTrackerSubsystem::GetTickableGameObjectWorld() const
+{
+	return GetWorld();
+}
+
+void UCtcAnalyticsAutoTrackerSubsystem::RegisterApplicationEvents()
 {
 	if (FNullPlatformApplicationMisc::IsUsingNullApplication())
 	{
@@ -37,7 +57,7 @@ void UCtcAnalyticsNotifierSubsystem::RegisterApplicationEvents()
 
 #if PLATFORM_WINDOWS
 	WindowsMessageHandler = TUniquePtr<FCtcWindowsMessageHandler>(new FCtcWindowsMessageHandler);
-	WindowsMessageHandler->OnAltF4Pressed.AddUObject(this, &UCtcAnalyticsNotifierSubsystem::OnWindowsAltF4Pressed);
+	WindowsMessageHandler->OnAltF4Pressed.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnWindowsAltF4Pressed);
 	const TSharedPtr<GenericApplication> PlatformApplication = FSlateApplication::Get().GetPlatformApplication();
 	if (TSharedPtr<FWindowsApplication> WindowsApplication = StaticCastSharedPtr<FWindowsApplication>(PlatformApplication))
 	{
@@ -46,7 +66,7 @@ void UCtcAnalyticsNotifierSubsystem::RegisterApplicationEvents()
 #endif
 }
 
-void UCtcAnalyticsNotifierSubsystem::UnregisterApplicationEvents()
+void UCtcAnalyticsAutoTrackerSubsystem::UnregisterApplicationEvents()
 {
 	if (FNullPlatformApplicationMisc::IsUsingNullApplication())
 	{
@@ -63,7 +83,7 @@ void UCtcAnalyticsNotifierSubsystem::UnregisterApplicationEvents()
 #endif
 }
 
-void UCtcAnalyticsNotifierSubsystem::OnWindowsAltF4Pressed()
+void UCtcAnalyticsAutoTrackerSubsystem::OnWindowsAltF4Pressed()
 {
 	TOptional<FVector> PlayerPosition = {};
 	if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
@@ -79,23 +99,23 @@ void UCtcAnalyticsNotifierSubsystem::OnWindowsAltF4Pressed()
 	UCtcAnalyticsBPFL::RecordEventWithPossibleLocation(TEXT("ALT+F4 Pressed"), PlayerPosition, {});
 }
 
-void UCtcAnalyticsNotifierSubsystem::OnLocalPlayerAdded(ULocalPlayer* LocalPlayer)
+void UCtcAnalyticsAutoTrackerSubsystem::OnLocalPlayerAdded(ULocalPlayer* LocalPlayer)
 {
 	if (LocalPlayer)
 	{
-		LocalPlayer->OnPlayerControllerChanged().AddUObject(this, &UCtcAnalyticsNotifierSubsystem::OnLocalPlayerReceivedPlayerController);
+		LocalPlayer->OnPlayerControllerChanged().AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnLocalPlayerReceivedPlayerController);
 	}
 }
 
-void UCtcAnalyticsNotifierSubsystem::OnLocalPlayerReceivedPlayerController(APlayerController* PlayerController)
+void UCtcAnalyticsAutoTrackerSubsystem::OnLocalPlayerReceivedPlayerController(APlayerController* PlayerController)
 {
 	if (PlayerController)
 	{
-		PlayerController->OnPossessedPawnChanged.AddDynamic(this, &UCtcAnalyticsNotifierSubsystem::OnPossessedPawnChanged);
+		PlayerController->OnPossessedPawnChanged.AddDynamic(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPossessedPawnChanged);
 	}
 }
 
-void UCtcAnalyticsNotifierSubsystem::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
+void UCtcAnalyticsAutoTrackerSubsystem::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
 {
 	const FString EventType = [OldPawn, NewPawn]()
 	{
@@ -115,8 +135,12 @@ void UCtcAnalyticsNotifierSubsystem::OnPossessedPawnChanged(APawn* OldPawn, APaw
 		return TEXT("PlayerPawnPossess Unknown");
 	}();
 
-	const APawn* RelevantPawn = NewPawn ? NewPawn : OldPawn;
-	const TOptional<FVector> RelevantPosition = RelevantPawn ? RelevantPawn->GetActorLocation() : TOptional<FVector>();
+	const APawn* RelevantPawn = NewPawn
+		? NewPawn
+		: OldPawn;
+	const TOptional<FVector> RelevantPosition = RelevantPawn
+		? RelevantPawn->GetActorLocation()
+		: TOptional<FVector>();
 
 	UCtcAnalyticsBPFL::RecordEventWithPossibleLocation(EventType, RelevantPosition, {});
 }
