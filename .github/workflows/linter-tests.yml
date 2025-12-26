@@ -2,17 +2,11 @@ name: Linter Tests
 
 on:
   push:
-    paths:
-      - "Source/**"
-      - ".clang-format"
-      - ".github/workflows/linter-tests.yml"
-      - ".github/configs/licenserc.yaml"
+    branches:
+      - main
   pull_request:
-    paths:
-      - "Source/**"
-      - ".clang-format"
-      - ".github/workflows/linter-tests.yml"
-      - ".github/configs/licenserc.yaml"
+    branches:
+      - main
 
 jobs:
   editorconfig-checker:
