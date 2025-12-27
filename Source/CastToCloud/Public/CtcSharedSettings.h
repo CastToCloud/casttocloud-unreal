@@ -76,10 +76,10 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking")
 	bool bAutoPlayerMoveTracking = false;
 
-	UPROPERTY(EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", Units = "s"))
+	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", Units = "s"))
 	float AutoPlayerMoveTrackingInterval = 10.0f;
 
-	UPROPERTY(EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", InvalidEnumValues = "Disabled"))
+	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", InvalidEnumValues = "Disabled"))
 	ECtcAnalyticsSpatialTracking AutoPlayerMoveTrackingMethod = ECtcAnalyticsSpatialTracking::PlayerPawn;
 
 #if WITH_EDITOR
