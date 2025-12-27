@@ -241,7 +241,7 @@ void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptio
 
 	if (!IsActiveProvider())
 	{
-		UE_LOG(LogCtcAnalytics, VeryVerbose, TEXT("Event %s was skipped because CastToCloud is not the current provider (or the current build configuration is disabled)."), *EventName);
+		UE_LOG(LogCtcAnalytics, VeryVerbose, TEXT("Event %s was skipped because CastToCloud is not the current provider."), *EventName);
 		return;
 	}
 
