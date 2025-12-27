@@ -26,11 +26,13 @@
 #include "CtcAnalyticsLog.h"
 #include "CtcSharedSettings.h"
 
+// clang-format off
 TAutoConsoleVariable CVarCtcAnalyticsPrintDebugFlags(
 	TEXT("CastToCloud.Analytics.PrintDebugFlags"),
 	false,
 	TEXT("Whether comments are supported in the analytics user agent string")
 );
+// clang-format on
 
 namespace
 {
@@ -90,6 +92,7 @@ namespace
 
 FCtcAnalyticsProvider::FCtcAnalyticsProvider()
 {
+	// TODO: Move everything to the auto tracker subsystem and make it an engine subsystem.
 	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateRaw(this, &FCtcAnalyticsProvider::Tick), 0.0f);
 
 #if WITH_EDITOR

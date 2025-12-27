@@ -75,6 +75,7 @@ void FCtcEditorModule::RemovePublicKeyFromPackage()
 	UProjectPackagingSettings* PackagingSettings = GetMutableDefault<UProjectPackagingSettings>();
 	if (!PackagingSettings->IniKeyDenylist.Contains(PrivateApiKey))
 	{
+		// TODO: This should also check out this file for submission too.
 		PackagingSettings->IniKeyDenylist.Add(PrivateApiKey);
 		PackagingSettings->TryUpdateDefaultConfigFile();
 
