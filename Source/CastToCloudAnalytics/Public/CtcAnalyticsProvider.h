@@ -25,7 +25,7 @@ public:
 	virtual void RecordEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes) override;
 	// ~End IAnalyticsProvider interface
 
-	void RecordEventWithCustomTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes);
+	void RecordEventWithTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes);
 
 #if !UE_BUILD_SHIPPING
 	TArray<FString> GetDebugState() const;

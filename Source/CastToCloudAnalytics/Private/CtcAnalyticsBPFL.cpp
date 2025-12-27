@@ -30,7 +30,7 @@ void UCtcAnalyticsBPFL::RecordEventAtLocation(const FString& EventName, const FV
 	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
 	{
 		FTransform EventTransform = FTransform(Rotation, Location);
-		CtcProvider->RecordEventWithCustomTransform(EventName, EventTransform, Attributes);
+		CtcProvider->RecordEventWithTransform(EventName, EventTransform, Attributes);
 	}
 }
 
@@ -43,7 +43,7 @@ void UCtcAnalyticsBPFL::RecordEventWithTransform(const FString& EventName, const
 {
 	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
 	{
-		CtcProvider->RecordEventWithCustomTransform(EventName, Transform, Attributes);
+		CtcProvider->RecordEventWithTransform(EventName, Transform, Attributes);
 	}
 }
 
@@ -53,7 +53,7 @@ void UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(const FString& EventNam
 	{
 		if (Transform.IsSet())
 		{
-			CtcProvider->RecordEventWithCustomTransform(EventName, *Transform, Attributes);
+			CtcProvider->RecordEventWithTransform(EventName, *Transform, Attributes);
 		}
 		else
 		{

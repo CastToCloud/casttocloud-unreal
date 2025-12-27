@@ -108,7 +108,7 @@ FCtcAnalyticsProvider::FCtcAnalyticsProvider()
 	FWorldDelegates::OnWorldBeginTearDown.AddRaw(this, &FCtcAnalyticsProvider::OnWorldEndPlay);
 }
 
-void FCtcAnalyticsProvider::RecordEventWithCustomTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes)
+void FCtcAnalyticsProvider::RecordEventWithTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes)
 {
 	TOptional<FTransform> InputTransform = Transform;
 	RecordEventInternal(EventName, InputTransform, Attributes);
