@@ -20,22 +20,44 @@ namespace
 	}
 } // namespace
 
-void UCtcAnalyticsBPFL::RecordEventWithCustomLocation(const FString& EventName, const FVector& Location, const TArray<FAnalyticsEventAttr>& Attributes)
+void UCtcAnalyticsBPFL::RecordEventAtLocationBP(const FString& EventName, const FVector& Location, const FQuat& Rotation, const TArray<FAnalyticsEventAttr>& Attributes)
 {
-	RecordEventWithPossibleLocation(EventName, Location, Attributes);
+	RecordEventAtLocation(EventName, Location, Rotation, ConvertAttrs(Attributes));
 }
 
-void UCtcAnalyticsBPFL::RecordEventWithPossibleLocation(const FString& EventName, const TOptional<FVector>& Location, const TArray<FAnalyticsEventAttr>& Attributes)
+void UCtcAnalyticsBPFL::RecordEventAtLocation(const FString& EventName, const FVector& Location, const FQuat& Rotation, const TArray<FAnalyticsEventAttribute>& Attributes)
 {
 	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
 	{
-		if (Location.IsSet())
+		FTransform EventTransform = FTransform(Rotation, Location);
+		CtcProvider->RecordEventWithCustomTransform(EventName, EventTransform, Attributes);
+	}
+}
+
+void UCtcAnalyticsBPFL::RecordEventWithTransformBP(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttr>& Attributes)
+{
+	RecordEventWithTransform(EventName, Transform, ConvertAttrs(Attributes));
+}
+
+void UCtcAnalyticsBPFL::RecordEventWithTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes)
+{
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
+	{
+		CtcProvider->RecordEventWithCustomTransform(EventName, Transform, Attributes);
+	}
+}
+
+void UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(const FString& EventName, TOptional<FTransform> Transform, const TArray<FAnalyticsEventAttribute>& Attributes)
+{
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
+	{
+		if (Transform.IsSet())
 		{
-			CtcProvider->RecordEventWithCustomLocation(EventName, *Location, ConvertAttrs(Attributes));
+			CtcProvider->RecordEventWithCustomTransform(EventName, *Transform, Attributes);
 		}
 		else
 		{
-			CtcProvider->RecordEvent(EventName, ConvertAttrs(Attributes));
+			CtcProvider->RecordEvent(EventName, Attributes);
 		}
 	}
 }

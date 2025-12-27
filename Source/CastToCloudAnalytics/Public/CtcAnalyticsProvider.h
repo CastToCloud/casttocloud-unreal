@@ -5,16 +5,10 @@
 #include <Interfaces/IAnalyticsProvider.h>
 #include <Interfaces/IHttpRequest.h>
 
-// TODOs:
-//  1) we should have a delegate to auto add location to events
-//  4) we should have a way to record events and tell if it should auto add the location or not
-//  5) we should have a way to record a start session if events start getting recorded
-
 class CASTTOCLOUDANALYTICS_API FCtcAnalyticsProvider : public IAnalyticsProvider
 {
 public:
 	FCtcAnalyticsProvider();
-
 
 	// ~Begin IAnalyticsProvider interface
 	virtual bool StartSession(const TArray<FAnalyticsEventAttribute>& Attributes) override;
@@ -31,7 +25,7 @@ public:
 	virtual void RecordEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes) override;
 	// ~End IAnalyticsProvider interface
 
-	void RecordEventWithCustomLocation(const FString& EventName, const FVector& Location, const TArray<FAnalyticsEventAttribute>& Attributes);
+	void RecordEventWithCustomTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes);
 
 #if !UE_BUILD_SHIPPING
 	TArray<FString> GetDebugState() const;
@@ -41,7 +35,7 @@ private:
 	/**
 	 * Internal Record Event function used by all possible tracking methods
 	 */
-	void RecordEventInternal(const FString& EventName, TOptional<FVector>& Location, const TArray<FAnalyticsEventAttribute>& Attributes);
+	void RecordEventInternal(const FString& EventName, TOptional<FTransform>& Transform, const TArray<FAnalyticsEventAttribute>& Attributes);
 	/**
 	 * Updates the built-in attributes applied to all events
 	 */
@@ -113,7 +107,7 @@ private:
 		FString Name;
 		FDateTime Timestamp;
 		FString World;
-		TOptional<FVector> Location;
+		TOptional<FTransform> Transform;
 		TArray<FAnalyticsEventAttribute> Attributes;
 	};
 	/**

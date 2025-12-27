@@ -3,8 +3,8 @@
 #pragma once
 
 #include <Subsystems/GameInstanceSubsystem.h>
-
 #include <Tickable.h>
+
 #include "CtcAnalyticsWindowsMessageHandler.h"
 
 #include "CtcAnalyticsAutoTrackerSubsystem.generated.h"
@@ -25,7 +25,7 @@ class CASTTOCLOUDANALYTICS_API UCtcAnalyticsAutoTrackerSubsystem : public UGameI
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics")
-	void SetPlayerPositionTracking(bool bEnabled);
+	void SetPlayerMovementTracking(bool bEnabled);
 
 private:
 	// ~Begin UGameInstanceSubsystem interface
@@ -66,14 +66,14 @@ private:
 	UFUNCTION()
 	void OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn);
 	/**
-	 * Called every frame to update the automated player position tracking
+	 * Called every frame to update the automated player move tracking
 	 */
-	void TickPlayerPositionTracking(float DeltaTime);
+	void TickPlayerMoveTracking(float DeltaTime);
 
 #if PLATFORM_WINDOWS
 	TUniquePtr<FCtcWindowsMessageHandler> WindowsMessageHandler;
 #endif
 
-	FIntervalTracker SendPlayerPositionInterval;
-	TOptional<bool> SendPlayerPositionEnabled;
+	FIntervalTracker SendPlayerMoveInterval;
+	TOptional<bool> SendPlayerMoveEnabled;
 };

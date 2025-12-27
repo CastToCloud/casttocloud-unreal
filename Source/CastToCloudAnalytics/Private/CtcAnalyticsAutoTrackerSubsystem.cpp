@@ -13,10 +13,9 @@
 #include "CtcAnalyticsBPFL.h"
 #include "CtcSharedSettings.h"
 
-
-void UCtcAnalyticsAutoTrackerSubsystem::SetPlayerPositionTracking(bool bEnabled)
+void UCtcAnalyticsAutoTrackerSubsystem::SetPlayerMovementTracking(bool bEnabled)
 {
-	SendPlayerPositionEnabled = bEnabled;
+	SendPlayerMoveEnabled = bEnabled;
 }
 
 void UCtcAnalyticsAutoTrackerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -37,7 +36,7 @@ void UCtcAnalyticsAutoTrackerSubsystem::Deinitialize()
 
 void UCtcAnalyticsAutoTrackerSubsystem::Tick(float DeltaTime)
 {
-	TickPlayerPositionTracking(DeltaTime);
+	TickPlayerMoveTracking(DeltaTime);
 }
 
 ETickableTickType UCtcAnalyticsAutoTrackerSubsystem::GetTickableTickType() const
@@ -93,18 +92,18 @@ void UCtcAnalyticsAutoTrackerSubsystem::UnregisterApplicationEvents()
 
 void UCtcAnalyticsAutoTrackerSubsystem::OnWindowsAltF4Pressed()
 {
-	TOptional<FVector> PlayerPosition = {};
+	TOptional<FTransform> PlayerTransform = {};
 	if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
 	{
-		PlayerPosition = PlayerPawn->GetActorLocation();
+		PlayerTransform = PlayerPawn->GetActorTransform();
 	}
 	else if (const APlayerCameraManager* CameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0))
 	{
-		// Fallback to camera position in case the user ALT+F4 while unpossessed (e.g.: while dead)
-		PlayerPosition = CameraManager->GetCameraLocation();
+		// Fallback to camera in case the user ALT+F4 while unpossessed (e.g.: while dead)
+		PlayerTransform = FTransform(CameraManager->GetCameraRotation(), CameraManager->GetCameraLocation());
 	}
 
-	UCtcAnalyticsBPFL::RecordEventWithPossibleLocation(TEXT("ALT+F4 Pressed"), PlayerPosition, {});
+	UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(TEXT("ALT+F4 Pressed"), PlayerTransform, {});
 }
 
 void UCtcAnalyticsAutoTrackerSubsystem::OnLocalPlayerAdded(ULocalPlayer* LocalPlayer)
@@ -144,47 +143,47 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnPossessedPawnChanged(APawn* OldPawn, A
 	}();
 
 	const APawn* RelevantPawn = NewPawn ? NewPawn : OldPawn;
-	const TOptional<FVector> RelevantPosition = RelevantPawn ? RelevantPawn->GetActorLocation() : TOptional<FVector>();
+	const TOptional<FTransform> RelevantTransform = RelevantPawn ? RelevantPawn->GetActorTransform() : TOptional<FTransform>();
 
-	UCtcAnalyticsBPFL::RecordEventWithPossibleLocation(EventType, RelevantPosition, {});
+	UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(EventType, RelevantTransform, {});
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::TickPlayerPositionTracking(float DeltaTime)
+void UCtcAnalyticsAutoTrackerSubsystem::TickPlayerMoveTracking(float DeltaTime)
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	const bool bShouldTrack = SendPlayerPositionEnabled.Get(false) || Settings->bAutoPlayerPositionTracking;
+	const bool bShouldTrack = SendPlayerMoveEnabled.Get(false) || Settings->bAutoPlayerMoveTracking;
 	if (!bShouldTrack)
 	{
 		return;
 	}
 
-	SendPlayerPositionInterval.Tick(DeltaTime);
-	if (!SendPlayerPositionInterval.HasFinished())
+	SendPlayerMoveInterval.Tick(DeltaTime);
+	if (!SendPlayerMoveInterval.HasFinished())
 	{
 		return;
 	}
 
-	TOptional<FVector> AutomatedLocation;
+	TOptional<FTransform> AutomatedTransform;
 
-	if (Settings->AutoPlayerPositionTrackingMethod == ECtcAnalyticsLocationTracking::PlayerPawnLocation)
+	if (Settings->AutoPlayerMoveTrackingMethod == ECtcAnalyticsSpatialTracking::PlayerPawn)
 	{
 		if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
 		{
-			AutomatedLocation = PlayerPawn->GetActorLocation();
+			AutomatedTransform = PlayerPawn->GetActorTransform();
 		}
 	}
-	else if (Settings->AutoPlayerPositionTrackingMethod == ECtcAnalyticsLocationTracking::CameraLocation)
+	else if (Settings->AutoPlayerMoveTrackingMethod == ECtcAnalyticsSpatialTracking::Camera)
 	{
 		if (const APlayerCameraManager* CameraManager = UGameplayStatics::GetPlayerCameraManager(this, 0))
 		{
-			AutomatedLocation = CameraManager->GetCameraLocation();
+			AutomatedTransform = FTransform(CameraManager->GetCameraRotation(), CameraManager->GetCameraLocation());
 		}
 	}
 
-	if (AutomatedLocation.IsSet())
+	if (AutomatedTransform.IsSet())
 	{
-		UCtcAnalyticsBPFL::RecordEventWithCustomLocation(TEXT("PlayerPosition"), *AutomatedLocation, {});
+		UCtcAnalyticsBPFL::RecordEventWithTransform(TEXT("PlayerMove"), *AutomatedTransform);
 	}
 
-	SendPlayerPositionInterval.Reset(Settings->AutoPlayerPositionTrackingInterval);
+	SendPlayerMoveInterval.Reset(Settings->AutoPlayerMoveTrackingInterval);
 }

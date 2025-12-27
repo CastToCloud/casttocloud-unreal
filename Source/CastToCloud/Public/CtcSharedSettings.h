@@ -10,11 +10,11 @@
 #include "CtcSharedSettings.generated.h"
 
 UENUM()
-enum class ECtcAnalyticsLocationTracking : uint8
+enum class ECtcAnalyticsSpatialTracking : uint8
 {
 	Disabled,
-	PlayerPawnLocation,
-	CameraLocation,
+	PlayerPawn,
+	Camera,
 
 	// TODO: Would it make sense to have MouseLocation (slate cursor coords) and maybe ProjectMouseLocation (cursor in 3d space) ?
 };
@@ -74,13 +74,13 @@ public:
 	bool bAutoWorldChangeTracking = true;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking")
-	bool bAutoPlayerPositionTracking = false;
+	bool bAutoPlayerMoveTracking = false;
 
-	UPROPERTY(EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerPositionTracking", Units = "s"))
-	float AutoPlayerPositionTrackingInterval = 10.0f;
+	UPROPERTY(EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", Units = "s"))
+	float AutoPlayerMoveTrackingInterval = 10.0f;
 
-	UPROPERTY(EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerPositionTracking", InvalidEnumValues = "Disabled"))
-	ECtcAnalyticsLocationTracking AutoPlayerPositionTrackingMethod = ECtcAnalyticsLocationTracking::PlayerPawnLocation;
+	UPROPERTY(EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", InvalidEnumValues = "Disabled"))
+	ECtcAnalyticsSpatialTracking AutoPlayerMoveTrackingMethod = ECtcAnalyticsSpatialTracking::PlayerPawn;
 
 #if WITH_EDITOR
 	void ShowSettings();

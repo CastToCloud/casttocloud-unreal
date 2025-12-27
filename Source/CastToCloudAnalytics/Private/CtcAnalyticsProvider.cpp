@@ -108,10 +108,10 @@ FCtcAnalyticsProvider::FCtcAnalyticsProvider()
 	FWorldDelegates::OnWorldBeginTearDown.AddRaw(this, &FCtcAnalyticsProvider::OnWorldEndPlay);
 }
 
-void FCtcAnalyticsProvider::RecordEventWithCustomLocation(const FString& EventName, const FVector& Location, const TArray<FAnalyticsEventAttribute>& Attributes)
+void FCtcAnalyticsProvider::RecordEventWithCustomTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes)
 {
-	TOptional<FVector> InputLocation = Location;
-	RecordEventInternal(EventName, InputLocation, Attributes);
+	TOptional<FTransform> InputTransform = Transform;
+	RecordEventInternal(EventName, InputTransform, Attributes);
 }
 
 #if !UE_BUILD_SHIPPING
@@ -209,8 +209,8 @@ FAnalyticsEventAttribute FCtcAnalyticsProvider::GetDefaultEventAttribute(int Att
 
 void FCtcAnalyticsProvider::RecordEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes)
 {
-	TOptional<FVector> NoLocation;
-	RecordEventInternal(EventName, NoLocation, Attributes);
+	TOptional<FTransform> NoTransform;
+	RecordEventInternal(EventName, NoTransform, Attributes);
 }
 
 void FCtcAnalyticsProvider::RefreshBuiltInAttributes()
@@ -235,7 +235,7 @@ void FCtcAnalyticsProvider::RefreshBuiltInAttributes()
 	BuildInUserAttributes.Emplace(TEXT("gpu.version"), GpuDriverInfo.UserDriverVersion);
 }
 
-void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptional<FVector>& Location, const TArray<FAnalyticsEventAttribute>& Attributes)
+void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptional<FTransform>& Transform, const TArray<FAnalyticsEventAttribute>& Attributes)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FCtcAnalyticsProvider::RecordEventInternal);
 
@@ -256,7 +256,7 @@ void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptio
 
 	FCachedEvent Event;
 	Event.Name = EventName;
-	Event.Location = Location;
+	Event.Transform = Transform;
 	Event.Timestamp = FDateTime::UtcNow();
 	Event.Attributes = Attributes;
 
@@ -340,11 +340,18 @@ void FCtcAnalyticsProvider::SendCachedEvents(bool bWait)
 
 		EventObject->SetStringField(TEXT("world"), Event.World);
 
-		if (Event.Location.IsSet())
+		if (Event.Transform.IsSet())
 		{
-			EventObject->SetNumberField(TEXT("x"), Event.Location->X);
-			EventObject->SetNumberField(TEXT("y"), Event.Location->Y);
-			EventObject->SetNumberField(TEXT("z"), Event.Location->Z);
+			const FVector Position = Event.Transform->GetTranslation();
+			EventObject->SetNumberField(TEXT("position_x"), Position.X);
+			EventObject->SetNumberField(TEXT("position_y"), Position.Y);
+			EventObject->SetNumberField(TEXT("position_z"), Position.Z);
+
+			const FQuat Rotation = Event.Transform->GetRotation();
+			EventObject->SetNumberField(TEXT("rotation_x"), Rotation.X);
+			EventObject->SetNumberField(TEXT("rotation_y"), Rotation.Y);
+			EventObject->SetNumberField(TEXT("rotation_z"), Rotation.Z);
+			EventObject->SetNumberField(TEXT("rotation_w"), Rotation.W);
 		}
 
 		EventsArray.Add(MakeShared<FJsonValueObject>(EventObject));
