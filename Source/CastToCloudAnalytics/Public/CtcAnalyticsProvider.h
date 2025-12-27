@@ -27,10 +27,6 @@ public:
 
 	void RecordEventWithTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes);
 
-#if !UE_BUILD_SHIPPING
-	TArray<FString> GetDebugState() const;
-#endif
-
 private:
 	/**
 	 * Internal Record Event function used by all possible tracking methods

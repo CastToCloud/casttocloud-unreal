@@ -4,8 +4,8 @@
 
 #include <Analytics.h>
 #include <Dom/JsonObject.h>
+#include <Engine/Engine.h>
 #include <Engine/World.h>
-#include <GameFramework/Pawn.h>
 #include <GeneralProjectSettings.h>
 #include <GenericPlatform/GenericPlatformDriver.h>
 #include <HttpModule.h>
@@ -25,6 +25,12 @@
 
 #include "CtcAnalyticsLog.h"
 #include "CtcSharedSettings.h"
+
+TAutoConsoleVariable CVarCtcAnalyticsPrintDebugFlags(
+	TEXT("CastToCloud.Analytics.PrintDebugFlags"),
+	false,
+	TEXT("Whether comments are supported in the analytics user agent string")
+);
 
 namespace
 {
@@ -113,25 +119,6 @@ void FCtcAnalyticsProvider::RecordEventWithTransform(const FString& EventName, c
 	TOptional<FTransform> InputTransform = Transform;
 	RecordEventInternal(EventName, InputTransform, Attributes);
 }
-
-#if !UE_BUILD_SHIPPING
-TArray<FString> FCtcAnalyticsProvider::GetDebugState() const
-{
-	TArray<FString> InfoLines;
-
-	InfoLines.Add(FString::Printf(TEXT("SessionId: %s"), *GetSessionID()));
-	InfoLines.Add(FString::Printf(TEXT("UserId: %s"), *GetUserID()));
-	InfoLines.Add(FString::Printf(TEXT("Events in cache: %s"), *LexToString(CachedEvents.Num())));
-
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	const FDateTime Now = FDateTime::UtcNow();
-	const FTimespan TimeSinceLast = Now - LastTickSend;
-	const float NextSendIn = Settings->SendInterval - TimeSinceLast.GetTotalSeconds();
-	InfoLines.Add(FString::Printf(TEXT("Next flush in: %.2f"), NextSendIn));
-
-	return InfoLines;
-}
-#endif
 
 bool FCtcAnalyticsProvider::StartSession(const TArray<FAnalyticsEventAttribute>& Attributes)
 {
@@ -277,6 +264,21 @@ bool FCtcAnalyticsProvider::Tick(float DeltaTime)
 	if (TimeSinceLast.GetTotalSeconds() > Settings->SendInterval)
 	{
 		SendCachedEvents();
+	}
+
+	if (CVarCtcAnalyticsPrintDebugFlags.GetValueOnAnyThread())
+	{
+		TArray<FString> DebugFlags;
+		DebugFlags.Add(FString::Printf(TEXT("SessionId: %s"), *GetSessionID()));
+		DebugFlags.Add(FString::Printf(TEXT("UserId: %s"), *GetUserID()));
+		DebugFlags.Add(FString::Printf(TEXT("Events in cache: %s"), *LexToString(CachedEvents.Num())));
+		DebugFlags.Add(FString::Printf(TEXT("Next flush in: %.2f"), Settings->SendInterval - TimeSinceLast.GetTotalSeconds()));
+
+		GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Black, TEXT("Cast To Cloud Analytics"), false);
+		for (const FString& DebugFlag : DebugFlags)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Black, *DebugFlag, false);
+		}
 	}
 
 	return true;
