@@ -4,6 +4,7 @@
 
 #include <Subsystems/GameInstanceSubsystem.h>
 
+#include <Tickable.h>
 #include "CtcAnalyticsWindowsMessageHandler.h"
 
 #include "CtcAnalyticsAutoTrackerSubsystem.generated.h"
@@ -22,6 +23,11 @@ class CASTTOCLOUDANALYTICS_API UCtcAnalyticsAutoTrackerSubsystem : public UGameI
 {
 	GENERATED_BODY()
 
+public:
+	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics")
+	void SetPlayerPositionTracking(bool bEnabled);
+
+private:
 	// ~Begin UGameInstanceSubsystem interface
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
@@ -69,4 +75,5 @@ class CASTTOCLOUDANALYTICS_API UCtcAnalyticsAutoTrackerSubsystem : public UGameI
 #endif
 
 	FIntervalTracker SendPlayerPositionInterval;
+	TOptional<bool> SendPlayerPositionEnabled;
 };

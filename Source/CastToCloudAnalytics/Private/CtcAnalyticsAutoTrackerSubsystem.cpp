@@ -13,6 +13,12 @@
 #include "CtcAnalyticsBPFL.h"
 #include "CtcSharedSettings.h"
 
+
+void UCtcAnalyticsAutoTrackerSubsystem::SetPlayerPositionTracking(bool bEnabled)
+{
+	SendPlayerPositionEnabled = bEnabled;
+}
+
 void UCtcAnalyticsAutoTrackerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -146,7 +152,8 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnPossessedPawnChanged(APawn* OldPawn, A
 void UCtcAnalyticsAutoTrackerSubsystem::TickPlayerPositionTracking(float DeltaTime)
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (!Settings->bAutoPlayerPositionTracking)
+	const bool bShouldTrack = SendPlayerPositionEnabled.Get(false) || Settings->bAutoPlayerPositionTracking;
+	if (!bShouldTrack)
 	{
 		return;
 	}
