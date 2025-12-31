@@ -16,6 +16,8 @@
 #include "CtcApiKeyCustomization.h"
 #include "CtcConfigurationSettings.h"
 #include "CtcConfigurationSettingsCustomization.h"
+#include "CtcPathReference.h"
+#include "CtcPathReferenceCustomization.h"
 #include "CtcSharedLog.h"
 #include "CtcSharedSettings.h"
 #include "CtcSharedSettingsDetailsCustomization.h"
@@ -37,6 +39,7 @@ void FCtcEditorModule::StartupModule()
 {
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	PropertyModule.RegisterCustomPropertyTypeLayout(FCtcConfigurationSettings::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FCtcConfigurationSettingsCustomization::MakeInstance));
+	PropertyModule.RegisterCustomPropertyTypeLayout(FCtcPathReference::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FCtcPathReferenceCustomization::MakeInstance));
 	PropertyModule.RegisterCustomPropertyTypeLayout(FCtcApiKey::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FCtcApiKeyCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout(UCtcSharedSettings::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FCtcSharedSettingsDetailsCustomization::MakeInstance));
 
@@ -55,6 +58,7 @@ void FCtcEditorModule::ShutdownModule()
 	if (FPropertyEditorModule* PropertyModule = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor"))
 	{
 		PropertyModule->UnregisterCustomPropertyTypeLayout(FCtcConfigurationSettings::StaticStruct()->GetFName());
+		PropertyModule->UnregisterCustomPropertyTypeLayout(FCtcPathReference::StaticStruct()->GetFName());
 		PropertyModule->UnregisterCustomPropertyTypeLayout(FCtcApiKey::StaticStruct()->GetFName());
 		PropertyModule->UnregisterCustomClassLayout(UCtcSharedSettings::StaticClass()->GetFName());
 	}

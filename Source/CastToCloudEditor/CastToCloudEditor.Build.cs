@@ -11,6 +11,7 @@ public class CastToCloudEditor : ModuleRules
 			{
 				"Core",
 				"CoreUObject",
+				"DesktopWidgets",
 				"DeveloperToolSettings",
 				"EditorSubsystem",
 				"Engine",

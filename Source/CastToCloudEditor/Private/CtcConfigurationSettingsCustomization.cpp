@@ -64,7 +64,6 @@ void FCtcConfigurationSettingsCustomization::CustomizeChildren(TSharedRef<IPrope
 		// clang-format on
 	}
 
-
 	for (const EBuildTargetType& BuildTarget : BuildTargets)
 	{
 		const int i = static_cast<int>(BuildTarget) + 1;
