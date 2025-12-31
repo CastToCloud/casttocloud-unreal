@@ -393,7 +393,7 @@ void FCtcAnalyticsProvider::SendCachedEvents(bool bWait)
 
 	FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
 	Request->SetVerb(TEXT("POST"));
-	Request->SetURL(Settings->ApiUrl / TEXT("events/record"));
+	Request->SetURL(Settings->ApiUrl / TEXT("events/gameplay/record"));
 	Request->SetHeader(TEXT("X-API-Key"), Settings->RuntimeApiKey);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetContentAsString(RequestBodyString);

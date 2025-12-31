@@ -142,7 +142,7 @@ void UCtcAnalyticsEditorSubsystem::UploadDataToBackend(UWorld* World, const FBox
 
 	FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
 	Request->SetVerb(TEXT("POST"));
-	Request->SetURL(Settings->ApiUrl / TEXT("events/upload-background"));
+	Request->SetURL(Settings->ApiUrl / TEXT("events/gameplay/upload-background"));
 	Request->SetHeader(TEXT("X-API-Key"), Settings->DeveloperApiKey);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetContentAsString(JsonString);
