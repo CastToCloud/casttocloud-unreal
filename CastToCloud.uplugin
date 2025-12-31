@@ -28,6 +28,12 @@
 			"LoadingPhase": "Default"
 		},
 		{
+			"Name": "CastToCloudAnalyticsEditor",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		},
+		{
 			"Name": "CastToCloudEditor",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
 			"Type": "Editor",
