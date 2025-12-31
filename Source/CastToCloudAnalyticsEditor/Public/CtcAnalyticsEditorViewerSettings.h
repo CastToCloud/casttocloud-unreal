@@ -14,6 +14,20 @@
 
 class UCtcAnalyticsEditorViewerDataSource;
 
+UENUM()
+enum class ECtcAnalyticsEditorViewerDrawShape : uint8
+{
+	Cube,
+	Sphere,
+};
+
+UENUM()
+enum class ECtcAnalyticsEditorViewerDrawMode : uint8
+{
+	Solid,
+	Wired,
+};
+
 UCLASS()
 class UCtcAnalyticsEditorViewerSettings : public UObject
 {
@@ -32,7 +46,16 @@ protected:
 	double DrawSize = 100.0;
 
 	UPROPERTY(EditAnywhere, Category = "CastToCloud")
-	FColor DrawColor = FColor::Blue;
+	ECtcAnalyticsEditorViewerDrawShape DrawShape = ECtcAnalyticsEditorViewerDrawShape::Cube;
+
+	UPROPERTY(EditAnywhere, Category = "CastToCloud")
+	ECtcAnalyticsEditorViewerDrawMode DrawMode = ECtcAnalyticsEditorViewerDrawMode::Solid;
+
+	UPROPERTY(EditAnywhere, Category = "CastToCloud")
+	FColor DrawStartColor = FColor::Green;
+
+	UPROPERTY(EditAnywhere, Category = "CastToCloud")
+	FColor DrawEndColor = FColor::Red;
 
 	UPROPERTY(EditAnywhere, Category = "CastToCloud", meta = (ShowDisplayNames))
 	TSubclassOf<UCtcAnalyticsEditorViewerDataSource> DataSource;

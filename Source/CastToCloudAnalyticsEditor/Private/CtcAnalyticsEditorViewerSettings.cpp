@@ -40,10 +40,46 @@ void UCtcAnalyticsEditorViewerSettings::DrawPoints()
 		return;
 	}
 
-	TArray<FCtcAnalyticsEditorHeatmapPoint> Points = Result.GetValue().Points;
+	const TArray<FCtcAnalyticsEditorHeatmapPoint> Points = Result.GetValue().Points;
+	if (Points.IsEmpty())
+	{
+		return;
+	}
+
+	TArray<int32> CountArray;
+	Algo::Transform(
+		Points,
+		CountArray,
+		[](const FCtcAnalyticsEditorHeatmapPoint& Point)
+		{
+			return Point.Count;
+		}
+	);
+
+	const int32 MinCount = *Algo::MinElement(CountArray);
+	const int32 MaxCount = *Algo::MaxElement(CountArray);
+
 	for (const FCtcAnalyticsEditorHeatmapPoint& Point : Points)
 	{
-		DrawDebugSolidBox(GWorld, Point.Position, FVector::OneVector * DrawSize, DrawColor);
+		const float Alpha = static_cast<float>(Point.Count - MinCount) / (MaxCount - MinCount);
+		const FColor PointColor = FLinearColor::LerpUsingHSV(DrawStartColor, DrawEndColor, Alpha).ToFColor(true);
+
+		if (DrawShape == ECtcAnalyticsEditorViewerDrawShape::Cube && DrawMode == ECtcAnalyticsEditorViewerDrawMode::Solid)
+		{
+			DrawDebugSolidBox(GWorld, Point.Position, FVector::OneVector * DrawSize, PointColor);
+		}
+		if (DrawShape == ECtcAnalyticsEditorViewerDrawShape::Cube && DrawMode == ECtcAnalyticsEditorViewerDrawMode::Wired)
+		{
+			DrawDebugBox(GWorld, Point.Position, FVector::OneVector * DrawSize, PointColor);
+		}
+		if (DrawShape == ECtcAnalyticsEditorViewerDrawShape::Sphere && DrawMode == ECtcAnalyticsEditorViewerDrawMode::Solid)
+		{
+			DrawDebugSphere(GWorld, Point.Position, DrawSize, 64, PointColor);
+		}
+		if (DrawShape == ECtcAnalyticsEditorViewerDrawShape::Sphere && DrawMode == ECtcAnalyticsEditorViewerDrawMode::Wired)
+		{
+			DrawDebugSphere(GWorld, Point.Position, DrawSize, 8, PointColor);
+		}
 	}
 }
 
