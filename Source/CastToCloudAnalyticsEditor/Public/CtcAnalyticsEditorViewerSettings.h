@@ -30,7 +30,7 @@ public:
 
 protected:
 	UPROPERTY(EditAnywhere, Category="CastToCloud", meta=(ClampMin=1.0, Units=cm))
-	double BucketSize = 100.0;
+	double DrawSize = 100.0;
 
 	UPROPERTY(EditAnywhere, Category="CastToCloud")
 	FColor DrawColor = FColor::Blue;
@@ -63,8 +63,7 @@ private:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	//~End UObject interface
 
-	friend class UCtcAnalyticsEditorFileViewerSource;
-	friend class UCtcAnalyticsEditorApiViewerSource;
+	friend class UCtcAnalyticsEditorViewerDataSource;
 };
 
 UCLASS(Abstract, EditInlineNew)
@@ -83,10 +82,7 @@ public:
 	virtual TValueOrError<FCtcAnalyticsEditorHeatmapPoints, FString> GetResult() const;
 
 protected:
-	/*
-	 * Helper function to access to outer owner to access its data properties.
-	 */
-	UCtcAnalyticsEditorViewerSettings& GetOuterData() const;
+	double GetBucketSize() const;
 };
 
 UCLASS(DisplayName = "From File")

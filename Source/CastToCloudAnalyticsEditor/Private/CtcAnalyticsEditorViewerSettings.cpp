@@ -43,7 +43,7 @@ void UCtcAnalyticsEditorViewerSettings::DrawPoints()
 	TArray<FCtcAnalyticsEditorHeatmapPoint> Points = Result.GetValue().Points;
 	for (const FCtcAnalyticsEditorHeatmapPoint& Point : Points)
 	{
-		DrawDebugSolidBox(GWorld, Point.Position, FVector::OneVector * BucketSize, DrawColor);
+		DrawDebugSolidBox(GWorld, Point.Position, FVector::OneVector * DrawSize, DrawColor);
 	}
 }
 
@@ -95,9 +95,9 @@ TValueOrError<FCtcAnalyticsEditorHeatmapPoints, FString> UCtcAnalyticsEditorView
 	return MakeError(TEXT("Not implemented"));
 }
 
-UCtcAnalyticsEditorViewerSettings& UCtcAnalyticsEditorViewerDataSource::GetOuterData() const
+double UCtcAnalyticsEditorViewerDataSource::GetBucketSize() const
 {
-	return *Cast<UCtcAnalyticsEditorViewerSettings>(GetOuter());
+	return Cast<UCtcAnalyticsEditorViewerSettings>(GetOuter())->DrawSize * 2;
 }
 
 void UCtcAnalyticsEditorFileViewerSource::RefreshResult()
@@ -123,8 +123,9 @@ void UCtcAnalyticsEditorFileViewerSource::RefreshResult()
 
 	auto ToBucketCenter = [&](double Value) -> double
 	{
-		const int32 Index = FMath::FloorToInt(Value / GetOuterData().BucketSize);
-		return (Index + 0.5) * GetOuterData().BucketSize;
+		const double BucketSize = GetBucketSize();
+		const int32 Index = FMath::FloorToInt(Value / BucketSize);
+		return (Index + 0.5) * BucketSize;
 	};
 
 	TMap<FVector, int> MapPoints;
