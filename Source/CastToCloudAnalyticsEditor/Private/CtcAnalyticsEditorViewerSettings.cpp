@@ -166,8 +166,8 @@ void UCtcAnalyticsEditorApiViewerSource::RefreshResult()
 {
 	CachedResult = MakeError(TEXT("Request in progress..."));
 
-	//TODO: Trigger the async request and wait for it to finish
-	//TODO: This will need to handle canceling requests in case rapid changes are done with other requets run.
+	// TODO: Trigger the async request and wait for it to finish
+	// TODO: This will need to handle canceling requests in case rapid changes are done with other requets run.
 }
 
 TValueOrError<FCtcAnalyticsEditorHeatmapPoints, FString> UCtcAnalyticsEditorApiViewerSource::GetResult() const

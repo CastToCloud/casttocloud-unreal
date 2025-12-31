@@ -1,4 +1,6 @@
-﻿#include "CtcAnalyticsEditorModule.h"
+// Copyright Cast To Cloud 2024-2026. All Rights Reserved.
+
+#include "CtcAnalyticsEditorModule.h"
 
 #include <Framework/Docking/TabManager.h>
 #include <Widgets/Docking/SDockTab.h>
@@ -11,7 +13,7 @@ namespace
 {
 	FText const CastToCloudCategory = INVTEXT("Cast To Cloud");
 
-	//TODO: - This should be moved to a shared module (ideally CastToCloudEditor, but CastToCloud with #ifdef is also fine)
+	// TODO: - This should be moved to a shared module (ideally CastToCloudEditor, but CastToCloud with #ifdef is also fine)
 	TSharedRef<FWorkspaceItem> GetWorkspaceCategoryItem()
 	{
 		TSharedPtr<FWorkspaceItem> FoundCategory;
@@ -36,17 +38,19 @@ namespace
 
 		return FoundCategory.ToSharedRef();
 	}
-}
+} // namespace
 
 const FName EventsViewerTabName = TEXT("EventsViewer");
 
 void FCtcAnalyticsEditorModule::StartupModule()
 {
+	// clang-format off
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(EventsViewerTabName, FOnSpawnTab::CreateRaw(this, &FCtcAnalyticsEditorModule::SpawnEventsViewerTab))
 		.SetDisplayName(INVTEXT("Events Viewer"))
 		.SetTooltipText(INVTEXT("Visualize events data inside the level viewport"))
 		.SetGroup(GetWorkspaceCategoryItem())
 		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "EditorViewport.QuadOverdrawMode"));
+	// clang-format on
 
 	FGlobalTabmanager::Get()->RegisterDefaultTabWindowSize(EventsViewerTabName, FVector2D(1080, 600));
 }

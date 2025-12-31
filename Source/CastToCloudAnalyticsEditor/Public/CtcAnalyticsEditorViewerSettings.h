@@ -2,10 +2,9 @@
 
 #pragma once
 
-#include <UObject/Object.h>
-
-#include <Templates/ValueOrError.h>
 #include <Templates/SubclassOf.h>
+#include <Templates/ValueOrError.h>
+#include <UObject/Object.h>
 #include <UObject/SoftObjectPath.h>
 
 #include "CtcAnalyticsEditorViewerData.h"
@@ -29,13 +28,13 @@ public:
 	UCtcAnalyticsEditorViewerDataSource* GetDataSourceInstance() const;
 
 protected:
-	UPROPERTY(EditAnywhere, Category="CastToCloud", meta=(ClampMin=1.0, Units=cm))
+	UPROPERTY(EditAnywhere, Category = "CastToCloud", meta = (ClampMin = 1.0, Units = cm))
 	double DrawSize = 100.0;
 
-	UPROPERTY(EditAnywhere, Category="CastToCloud")
+	UPROPERTY(EditAnywhere, Category = "CastToCloud")
 	FColor DrawColor = FColor::Blue;
 
-	UPROPERTY(EditAnywhere, Category="CastToCloud", meta=(ShowDisplayNames))
+	UPROPERTY(EditAnywhere, Category = "CastToCloud", meta = (ShowDisplayNames))
 	TSubclassOf<UCtcAnalyticsEditorViewerDataSource> DataSource;
 
 	UPROPERTY(Transient)
@@ -43,7 +42,7 @@ protected:
 
 private:
 	/**
-	 * Callback executed every frame 
+	 * Callback executed every frame
 	 */
 	bool OnTick(float DeltaTime);
 	/**
@@ -91,7 +90,7 @@ class UCtcAnalyticsEditorFileViewerSource : public UCtcAnalyticsEditorViewerData
 	GENERATED_BODY()
 
 protected:
-	UPROPERTY(EditAnywhere, Category="CastToCloud", meta = (FileTypeFilter = "Events Session (*.json)|*.json", FallbackBrowseDirectory="$(ProjectDir)/Saved/CastToCloud/Analytics"))
+	UPROPERTY(EditAnywhere, Category = "CastToCloud", meta = (FileTypeFilter = "Events Session (*.json)|*.json", FallbackBrowseDirectory = "$(ProjectDir)/Saved/CastToCloud/Analytics"))
 	FCtcPathReference PathReference;
 
 private:
@@ -114,7 +113,7 @@ class UCtcAnalyticsEditorApiViewerSource : public UCtcAnalyticsEditorViewerDataS
 	//~End UCtcAnalyticsEditorViewerSource interface
 
 protected:
-	UPROPERTY(EditAnywhere, Category="CastToCloud")
+	UPROPERTY(EditAnywhere, Category = "CastToCloud")
 	FString Parameters;
 
 	TValueOrError<FCtcAnalyticsEditorHeatmapPoints, FString> CachedResult = MakeError("Not initialized");

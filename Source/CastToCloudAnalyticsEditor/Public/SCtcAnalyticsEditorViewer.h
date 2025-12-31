@@ -11,7 +11,7 @@ class IDetailsView;
 class SCtcAnalyticsEditorViewer : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SCtcAnalyticsEditorViewer){}
+	SLATE_BEGIN_ARGS(SCtcAnalyticsEditorViewer) {}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);

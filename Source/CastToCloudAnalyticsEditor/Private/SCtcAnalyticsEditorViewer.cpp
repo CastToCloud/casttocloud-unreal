@@ -3,8 +3,8 @@
 #include "SCtcAnalyticsEditorViewer.h"
 
 #include <Components/VerticalBox.h>
-#include <PropertyEditorModule.h>
 #include <Modules/ModuleManager.h>
+#include <PropertyEditorModule.h>
 #include <Widgets/Text/STextBlock.h>
 
 #include "CtcAnalyticsEditorViewerSettings.h"
@@ -27,11 +27,13 @@ void SCtcAnalyticsEditorViewer::Construct(const FArguments& InArgs)
 	DrawSettingsDetailsView->SetObject(DrawSettings.Get());
 
 	// But we need to refresh the DataSource in case the class inside DrawSettings has been changed.
-	DrawSettingsDetailsView->OnFinishedChangingProperties().AddLambda([DataSourceDetailsView, this](const FPropertyChangedEvent& PropertyChangedEvent)
-	{
-		UCtcAnalyticsEditorViewerDataSource* DataSourceInstance = DrawSettings->GetDataSourceInstance();
-		DataSourceDetailsView->SetObject(DataSourceInstance);
-	});
+	DrawSettingsDetailsView->OnFinishedChangingProperties().AddLambda(
+		[DataSourceDetailsView, this](const FPropertyChangedEvent& PropertyChangedEvent)
+		{
+			UCtcAnalyticsEditorViewerDataSource* DataSourceInstance = DrawSettings->GetDataSourceInstance();
+			DataSourceDetailsView->SetObject(DataSourceInstance);
+		}
+	);
 
 	// clang-format off
 	ChildSlot

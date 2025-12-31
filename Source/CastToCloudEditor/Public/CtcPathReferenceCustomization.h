@@ -24,7 +24,7 @@ private:
 	 * Called when a path is selected.
 	 */
 	void OnFilePathPicked(const FString& PickedPath);
-	/** 
+	/**
 	 * Pointer to the string that will be seet when changing the path
 	 */
 	TSharedPtr<IPropertyHandle> PathStringProperty;
@@ -33,4 +33,3 @@ private:
 	 */
 	TOptional<FString> FallbackBrowseDirectory;
 };
-

@@ -24,7 +24,7 @@ namespace
 		const FString Suffix = !Path.EndsWith(TEXT("/")) ? TEXT("/") : TEXT("");
 		return Path + Suffix;
 	}
-}
+} // namespace
 
 TSharedRef<IPropertyTypeCustomization> FCtcPathReferenceCustomization::MakeInstance()
 {
@@ -63,7 +63,6 @@ void FCtcPathReferenceCustomization::CustomizeHeader(TSharedRef<IPropertyHandle>
 
 void FCtcPathReferenceCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
-
 }
 
 FString FCtcPathReferenceCustomization::GetBrowseDirectory() const
