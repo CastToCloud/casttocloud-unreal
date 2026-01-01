@@ -166,7 +166,7 @@ void UCtcAnalyticsEditorSubsystem::UploadDataToBackend(UWorld* World, const FBox
 		Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
 		{
 			const UCtcSharedSettings* SharedSettings = GetDefault<UCtcSharedSettings>();
-			const FString NewApiKeyRedirect = FString::Printf(TEXT("%s/organization/redirect?to=api-keys"), *SharedSettings->DashboardUrl);
+			const FString NewApiKeyRedirect = FString::Printf(TEXT("%s/organizations?redirectTo=/organizations/[slug]/explore-events"), *SharedSettings->DashboardUrl);
 			FPlatformProcess::LaunchURL(*NewApiKeyRedirect, nullptr, nullptr);
 		});
 		Info.SubText = INVTEXT("Upload successful.");

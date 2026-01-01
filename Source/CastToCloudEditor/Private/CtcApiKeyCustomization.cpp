@@ -118,7 +118,7 @@ void FCtcApiKeyCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> Stru
 						FUIAction GenerateAction(FExecuteAction::CreateLambda([this]()
 						{
 							const UCtcSharedSettings* SharedSettings = GetDefault<UCtcSharedSettings>();
-							const FString NewApiKeyRedirect = FString::Printf(TEXT("%s/organization/redirect?to=api-keys"), *SharedSettings->DashboardUrl);
+							const FString NewApiKeyRedirect = FString::Printf(TEXT("%s/organizations?redirectTo=/organizations/[slug]/api-keys"), *SharedSettings->DashboardUrl);
 							FPlatformProcess::LaunchURL(*NewApiKeyRedirect, nullptr, nullptr);
 						}));
 						QuickActionsMenuBuilds.AddMenuEntry(INVTEXT("Generate New Api Key"), INVTEXT("Generate a Api Key via the web Dashboard"), FSlateIcon(), GenerateAction);
