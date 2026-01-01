@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <Interfaces/IHttpRequest.h>
 #include <Templates/SubclassOf.h>
 #include <Templates/ValueOrError.h>
 #include <UObject/Object.h>
@@ -130,16 +131,27 @@ class UCtcAnalyticsEditorApiViewerSource : public UCtcAnalyticsEditorViewerDataS
 {
 	GENERATED_BODY()
 
+public:
+	UCtcAnalyticsEditorApiViewerSource();
+
+protected:
+	UPROPERTY(EditAnywhere, Category = NoCategory)
+	FDateTime StartTime;
+
+	UPROPERTY(EditAnywhere, Category = NoCategory)
+	FDateTime EndTime;
+
+private:
 	//~Begin UCtcAnalyticsEditorViewerSource interface
 	virtual void RefreshResult() override;
 	virtual TValueOrError<FCtcAnalyticsEditorHeatmapPoints, FString> GetResult() const override;
 	//~End UCtcAnalyticsEditorViewerSource interface
 
-protected:
-	UPROPERTY(EditAnywhere, Category = NoCategory)
-	FString Parameters;
+	void OnApiResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bSucceeded);
 
 	TValueOrError<FCtcAnalyticsEditorHeatmapPoints, FString> CachedResult = MakeError("Not initialized");
+
+	FHttpRequestPtr CurrentRequest;
 };
 
 // TODO: In the future enable this to aggreate all the valid json's from a whole folder.

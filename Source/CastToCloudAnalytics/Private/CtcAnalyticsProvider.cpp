@@ -24,6 +24,7 @@
 #endif
 
 #include "CtcAnalyticsLog.h"
+#include "CtcHelpers.h"
 #include "CtcSharedSettings.h"
 
 // clang-format off
@@ -250,9 +251,9 @@ void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptio
 	Event.Timestamp = FDateTime::UtcNow();
 	Event.Attributes = Attributes;
 
-	if (GWorld && GWorld->GetPackage())
+	if (const TOptional<FString> WorldPackage = CastToCloudHelpers::GetWorldPackage())
 	{
-		Event.World = UWorld::StripPIEPrefixFromPackageName(GWorld->GetPackage()->GetName(), GWorld->StreamingLevelsPrefix);
+		Event.World = *WorldPackage;
 	}
 
 	CachedEvents.Add(Event);

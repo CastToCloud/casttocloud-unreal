@@ -2,15 +2,23 @@
 
 #include "CtcAnalyticsEditorViewerSettings.h"
 
+#include <DrawDebugHelpers.h>
+#include <HttpModule.h>
+#include <JsonObjectConverter.h>
 #include <Algo/MaxElement.h>
 #include <Algo/MinElement.h>
 #include <Containers/Ticker.h>
 #include <Dom/JsonValue.h>
-#include <DrawDebugHelpers.h>
 #include <Engine/World.h>
+#include <Interfaces/IHttpRequest.h>
+#include <Interfaces/IHttpResponse.h>
 #include <Misc/FileHelper.h>
 #include <Serialization/JsonReader.h>
 #include <Serialization/JsonSerializer.h>
+
+#include "CtcHelpers.h"
+#include "CtcSharedLog.h"
+#include "CtcSharedSettings.h"
 
 UCtcAnalyticsEditorViewerSettings::UCtcAnalyticsEditorViewerSettings(const FObjectInitializer& ObjectInitializer)
 {
@@ -200,15 +208,88 @@ TValueOrError<FCtcAnalyticsEditorHeatmapPoints, FString> UCtcAnalyticsEditorFile
 	return CachedResult;
 }
 
+UCtcAnalyticsEditorApiViewerSource::UCtcAnalyticsEditorApiViewerSource()
+{
+	const FDateTime Now = FDateTime::UtcNow();
+
+	StartTime = FDateTime(Now.GetYear(), Now.GetMonth(), Now.GetDay());
+	EndTime = FDateTime(Now.GetYear(), Now.GetMonth(), Now.GetDay()) + FTimespan::FromDays(1);
+}
+
 void UCtcAnalyticsEditorApiViewerSource::RefreshResult()
 {
 	CachedResult = MakeError(TEXT("Request in progress..."));
 
-	// TODO: Trigger the async request and wait for it to finish
-	// TODO: This will need to handle canceling requests in case rapid changes are done with other requets run.
+	if (CurrentRequest)
+	{
+		CurrentRequest->CancelRequest();
+	}
+
+	TSharedRef<FJsonObject> PayloadObject = MakeShared<FJsonObject>();
+	PayloadObject->SetStringField(TEXT("start"), StartTime.ToIso8601());
+	PayloadObject->SetStringField(TEXT("end"), EndTime.ToIso8601());
+	PayloadObject->SetNumberField(TEXT("bucketSize"), GetBucketSize());
+
+	TArray<TSharedPtr<FJsonValue>> FiltersArray;
+
+	if (const TOptional<FString> WorldPackage = CastToCloudHelpers::GetWorldPackage())
+	{
+		TSharedRef<FJsonObject> FilterObject = MakeShared<FJsonObject>();
+		FilterObject->SetStringField(TEXT("property"), TEXT("world"));
+		FilterObject->SetStringField(TEXT("operator"), TEXT("equals"));
+		FilterObject->SetStringField(TEXT("value"), *WorldPackage);
+
+		FiltersArray.Add(MakeShared<FJsonValueObject>(FilterObject));
+	}
+
+	PayloadObject->SetArrayField(TEXT("filters"), FiltersArray);
+
+	FString JsonString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonString);
+	ensure(FJsonSerializer::Serialize(PayloadObject, Writer));
+
+	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
+
+	CurrentRequest = FHttpModule::Get().CreateRequest();
+	CurrentRequest->SetVerb(TEXT("POST"));
+	CurrentRequest->SetURL(Settings->ApiUrl / TEXT("events/gameplay/get-heatmap-points"));
+	CurrentRequest->SetHeader(TEXT("X-API-Key"), Settings->DeveloperApiKey);
+	CurrentRequest->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	CurrentRequest->SetContentAsString(JsonString);
+
+	CurrentRequest->OnProcessRequestComplete().BindUObject(this, &UCtcAnalyticsEditorApiViewerSource::OnApiResponseReceived);
+	CurrentRequest->ProcessRequest();
 }
 
 TValueOrError<FCtcAnalyticsEditorHeatmapPoints, FString> UCtcAnalyticsEditorApiViewerSource::GetResult() const
 {
 	return CachedResult;
+}
+
+void UCtcAnalyticsEditorApiViewerSource::OnApiResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+{
+	if (!bWasSuccessful || !Response)
+	{
+		CachedResult = MakeError(TEXT("Invalid response"));
+		return;
+	}
+
+	const FString ResponseContent = Response->GetContentAsString();
+	if (!EHttpResponseCodes::IsOk(Response->GetResponseCode()))
+	{
+		UE_LOG(LogCtcShared, Error, TEXT("Request failed with code: %s response: %s"), *LexToString(Response->GetResponseCode()), *ResponseContent);
+		CachedResult = MakeError(TEXT("Request failed"));
+		return;
+	}
+
+	FCtcAnalyticsEditorHeatmapPoints HeatmapPoints;
+	const bool bConvertSuccess = FJsonObjectConverter::JsonObjectStringToUStruct(ResponseContent, &HeatmapPoints, 0, 0);
+	if (!bConvertSuccess)
+	{
+		UE_LOG(LogCtcShared, Error, TEXT("Failed to parse response with content: %s"), *ResponseContent);
+		CachedResult = MakeError(TEXT("Failed to parse response"));
+		return;
+	}
+
+	CachedResult = MakeValue(HeatmapPoints);
 }
