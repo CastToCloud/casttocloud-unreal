@@ -42,22 +42,22 @@ public:
 	UCtcAnalyticsEditorViewerDataSource* GetDataSourceInstance() const;
 
 protected:
-	UPROPERTY(EditAnywhere, Category = "CastToCloud", meta = (ClampMin = 1.0, Units = cm))
+	UPROPERTY(EditAnywhere, Category = NoCategory, meta = (ClampMin = 1.0, Units = cm))
 	double DrawSize = 100.0;
 
-	UPROPERTY(EditAnywhere, Category = "CastToCloud")
+	UPROPERTY(EditAnywhere, Category = NoCategory)
 	ECtcAnalyticsEditorViewerDrawShape DrawShape = ECtcAnalyticsEditorViewerDrawShape::Cube;
 
-	UPROPERTY(EditAnywhere, Category = "CastToCloud")
+	UPROPERTY(EditAnywhere, Category = NoCategory)
 	ECtcAnalyticsEditorViewerDrawMode DrawMode = ECtcAnalyticsEditorViewerDrawMode::Solid;
 
-	UPROPERTY(EditAnywhere, Category = "CastToCloud")
+	UPROPERTY(EditAnywhere, Category = NoCategory)
 	FColor DrawStartColor = FColor::Green;
 
-	UPROPERTY(EditAnywhere, Category = "CastToCloud")
+	UPROPERTY(EditAnywhere, Category = NoCategory)
 	FColor DrawEndColor = FColor::Red;
 
-	UPROPERTY(EditAnywhere, Category = "CastToCloud", meta = (ShowDisplayNames))
+	UPROPERTY(EditAnywhere, Category = NoCategory, meta = (ShowDisplayNames))
 	TSubclassOf<UCtcAnalyticsEditorViewerDataSource> DataSource;
 
 	UPROPERTY(Transient)
@@ -88,7 +88,7 @@ private:
 	friend class UCtcAnalyticsEditorViewerDataSource;
 };
 
-UCLASS(Abstract, EditInlineNew)
+UCLASS(Abstract)
 class UCtcAnalyticsEditorViewerDataSource : public UObject
 {
 	GENERATED_BODY()
@@ -113,7 +113,7 @@ class UCtcAnalyticsEditorFileViewerSource : public UCtcAnalyticsEditorViewerData
 	GENERATED_BODY()
 
 protected:
-	UPROPERTY(EditAnywhere, Category = "CastToCloud", meta = (FileTypeFilter = "Events Session (*.json)|*.json", FallbackBrowseDirectory = "$(ProjectDir)/Saved/CastToCloud/Analytics"))
+	UPROPERTY(EditAnywhere, Category = NoCategory, meta = (FileTypeFilter = "Events Session (*.json)|*.json", FallbackBrowseDirectory = "$(ProjectDir)/Saved/CastToCloud/Analytics"))
 	FCtcPathReference PathReference;
 
 private:
@@ -136,7 +136,7 @@ class UCtcAnalyticsEditorApiViewerSource : public UCtcAnalyticsEditorViewerDataS
 	//~End UCtcAnalyticsEditorViewerSource interface
 
 protected:
-	UPROPERTY(EditAnywhere, Category = "CastToCloud")
+	UPROPERTY(EditAnywhere, Category = NoCategory)
 	FString Parameters;
 
 	TValueOrError<FCtcAnalyticsEditorHeatmapPoints, FString> CachedResult = MakeError("Not initialized");

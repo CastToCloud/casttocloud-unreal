@@ -16,7 +16,6 @@ void SCtcAnalyticsEditorViewer::Construct(const FArguments& InArgs)
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.ColumnWidth = 0.8f;
 	DetailsViewArgs.bAllowSearch = false;
-	DetailsViewArgs.bShowHeaders = false;
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
 
 	FPropertyEditorModule& PropertyEditorModule = FModuleManager::Get().GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
