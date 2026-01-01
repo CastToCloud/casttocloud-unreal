@@ -15,6 +15,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	virtual ~SCtcAnalyticsEditorViewer() override;
 
 private:
 	FText GetSourceStatusText() const;

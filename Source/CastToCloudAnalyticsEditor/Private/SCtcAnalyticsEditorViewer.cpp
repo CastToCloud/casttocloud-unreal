@@ -2,7 +2,6 @@
 
 #include "SCtcAnalyticsEditorViewer.h"
 
-#include <Components/VerticalBox.h>
 #include <Modules/ModuleManager.h>
 #include <PropertyEditorModule.h>
 #include <Widgets/Text/STextBlock.h>
@@ -59,6 +58,12 @@ void SCtcAnalyticsEditorViewer::Construct(const FArguments& InArgs)
 		]
 	];
 	// clang-format on
+}
+
+SCtcAnalyticsEditorViewer::~SCtcAnalyticsEditorViewer()
+{
+	//Requesting garbage collection at the next frame so object released by TStrongObjectPtr are properly cleaned up.
+	GEngine->ForceGarbageCollection(true);
 }
 
 FText SCtcAnalyticsEditorViewer::GetSourceStatusText() const
