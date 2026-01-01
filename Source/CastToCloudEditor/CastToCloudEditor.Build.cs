@@ -15,7 +15,6 @@ public class CastToCloudEditor : ModuleRules
 				"DeveloperToolSettings",
 				"EditorSubsystem",
 				"Engine",
-				"FunctionalTesting",
 				"PropertyEditor",
 				"LevelEditor",
 				"UnrealEd",

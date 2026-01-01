@@ -19,9 +19,6 @@ private:
 
 	void RemovePublicKeyFromPackage();
 
-	void RegisterToolbarExtension();
-	void UnregisterToolbarExtension();
-
 	void StartHttpServer();
 	void StopHttpServer();
 	/*

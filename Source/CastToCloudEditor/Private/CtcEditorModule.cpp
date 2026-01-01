@@ -7,12 +7,10 @@
 #include <HttpServerModule.h>
 #include <IHttpRouter.h>
 #include <Interfaces/IPluginManager.h>
-#include <Misc/EngineVersionComparison.h>
 #include <PropertyEditorModule.h>
 #include <Settings/ProjectPackagingSettings.h>
 #include <ToolMenus.h>
 
-#include "CtcAnalyticsEditorSubsystem.h"
 #include "CtcApiKeyCustomization.h"
 #include "CtcConfigurationSettings.h"
 #include "CtcConfigurationSettingsCustomization.h"
@@ -45,8 +43,6 @@ void FCtcEditorModule::StartupModule()
 
 	RemovePublicKeyFromPackage();
 
-	RegisterToolbarExtension();
-
 	if (!IsRunningCookCommandlet())
 	{
 		StartHttpServer();
@@ -62,8 +58,6 @@ void FCtcEditorModule::ShutdownModule()
 		PropertyModule->UnregisterCustomPropertyTypeLayout(FCtcApiKey::StaticStruct()->GetFName());
 		PropertyModule->UnregisterCustomClassLayout(UCtcSharedSettings::StaticClass()->GetFName());
 	}
-
-	UnregisterToolbarExtension();
 
 	if (!IsRunningCookCommandlet())
 	{
@@ -85,38 +79,6 @@ void FCtcEditorModule::RemovePublicKeyFromPackage()
 
 		UE_LOG(LogCtcShared, Display, TEXT("Added %s to IniKeyDenylist. Please submit the file"), *PrivateApiKey);
 	}
-}
-
-void FCtcEditorModule::RegisterToolbarExtension()
-{
-	FToolMenuOwnerScoped OwnerScoped(this);
-
-#if UE_VERSION_NEWER_THAN_OR_EQUAL(5, 6, 0)
-	const FName MenuToExtend = "LevelEditor.ViewportToolbar.Settings";
-#else
-	const FName MenuToExtend = "LevelEditor.LevelEditorToolBar.LevelToolbarQuickSettings";
-#endif
-
-	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu(MenuToExtend);
-	FToolMenuSection& SettingsSection = Menu->AddSection(FName("CastToCloud"), INVTEXT("Cast To Cloud"));
-
-	FToolMenuEntry& Entry = SettingsSection.AddMenuEntry(
-		FName("UploadBackground"),
-		INVTEXT("Upload Background"),
-		INVTEXT("Upload the current viewport as a screenshot to be used as an analytics background."),
-		FSlateIcon(FAppStyle::GetAppStyleSetName(), TEXT("Icons.Plus")),
-		FExecuteAction::CreateLambda(
-			[]()
-			{
-				GEditor->GetEditorSubsystem<UCtcAnalyticsEditorSubsystem>()->UploadEventsBackground();
-			}
-		)
-	);
-}
-
-void FCtcEditorModule::UnregisterToolbarExtension()
-{
-	UToolMenus::UnregisterOwner(this);
 }
 
 void FCtcEditorModule::StartHttpServer()
