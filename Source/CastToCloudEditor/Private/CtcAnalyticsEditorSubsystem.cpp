@@ -6,6 +6,7 @@
 #include <Dom/JsonObject.h>
 #include <EditorModeManager.h>
 #include <Framework/Application/SlateApplication.h>
+#include <Framework/Notifications/NotificationManager.h>
 #include <HttpModule.h>
 #include <IImageWrapper.h>
 #include <IImageWrapperModule.h>
@@ -20,6 +21,7 @@
 #include <Serialization/JsonSerializer.h>
 #include <Serialization/JsonWriter.h>
 #include <Slate/SceneViewport.h>
+#include <Widgets/Notifications/SNotificationList.h>
 
 #include "CtcSharedSettings.h"
 
@@ -149,13 +151,33 @@ void UCtcAnalyticsEditorSubsystem::UploadDataToBackend(UWorld* World, const FBox
 
 	Request->ProcessRequestUntilComplete();
 
-	// TODO: Improve status reporting.
-	if (FHttpResponsePtr Response = Request->GetResponse())
+	FText NotificationTitle = INVTEXT("Background Upload");
+	FNotificationInfo Info(NotificationTitle);
+	Info.bUseSuccessFailIcons = true;
+	Info.bFireAndForget = true;
+	Info.FadeOutDuration = 5.0f;
+	Info.ExpireDuration = 5.0f;
+
+	FHttpResponsePtr Response = Request->GetResponse();
+	const bool bSuccess = Response && EHttpResponseCodes::IsOk(Response->GetResponseCode()); 
+	if (bSuccess)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Response: %s"), *Response->GetContentAsString());
+		Info.HyperlinkText = INVTEXT("View in dashboard");
+		Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
+		{
+			const UCtcSharedSettings* SharedSettings = GetDefault<UCtcSharedSettings>();
+			const FString NewApiKeyRedirect = FString::Printf(TEXT("%s/organization/redirect?to=api-keys"), *SharedSettings->DashboardUrl);
+			FPlatformProcess::LaunchURL(*NewApiKeyRedirect, nullptr, nullptr);
+		});
+		Info.SubText = INVTEXT("Upload successful.");
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No response received."));
+		const FString Reason = Response ? Response->GetContentAsString() : TEXT("Unknown");
+		const FString ErrorMessage = FString::Printf(TEXT("Upload failed. Response: %s"), *Reason);
+		Info.SubText = FText::FromString(ErrorMessage);
 	}
+
+	TSharedPtr<SNotificationItem> Notification = FSlateNotificationManager::Get().AddNotification(Info);
+	Notification->SetCompletionState(bSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
 }
