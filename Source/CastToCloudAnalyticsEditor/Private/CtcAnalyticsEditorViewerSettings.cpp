@@ -2,6 +2,8 @@
 
 #include "CtcAnalyticsEditorViewerSettings.h"
 
+#include <Algo/MaxElement.h>
+#include <Algo/MinElement.h>
 #include <Containers/Ticker.h>
 #include <Dom/JsonValue.h>
 #include <DrawDebugHelpers.h>
@@ -12,7 +14,7 @@
 
 UCtcAnalyticsEditorViewerSettings::UCtcAnalyticsEditorViewerSettings(const FObjectInitializer& ObjectInitializer)
 {
-	FCoreUObjectDelegates::OnPostObjectPropertyChanged.AddUObject(this, &UCtcAnalyticsEditorViewerSettings::OnPostObjectPropertyChanged);
+	FCoreUObjectDelegates::OnObjectPropertyChanged.AddUObject(this, &UCtcAnalyticsEditorViewerSettings::OnObjectPropertyChanged);
 	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UCtcAnalyticsEditorViewerSettings::OnTick), 0);
 }
 
@@ -110,7 +112,7 @@ void UCtcAnalyticsEditorViewerSettings::PostEditChangeProperty(FPropertyChangedE
 	RefreshResult();
 }
 
-void UCtcAnalyticsEditorViewerSettings::OnPostObjectPropertyChanged(UObject* Object, const FPropertyChangedChainEvent& PropertyChangedEvent)
+void UCtcAnalyticsEditorViewerSettings::OnObjectPropertyChanged(UObject* Object, FPropertyChangedEvent& PropertyChangedEvent)
 {
 	if (Object != DataSourceInstance)
 	{

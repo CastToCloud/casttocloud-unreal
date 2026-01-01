@@ -71,7 +71,7 @@ private:
 	/**
 	 * Callback executed when a property of any object is changed
 	 */
-	void OnPostObjectPropertyChanged(UObject* Object, const FPropertyChangedChainEvent& PropertyChangedEvent);
+	void OnObjectPropertyChanged(UObject* Object, FPropertyChangedEvent& PropertyChangedEvent);
 	/**
 	 * Performs the drawing based on the current source instance's results and own settings
 	 */
