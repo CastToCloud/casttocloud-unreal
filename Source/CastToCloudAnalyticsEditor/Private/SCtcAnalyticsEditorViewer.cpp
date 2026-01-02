@@ -62,7 +62,7 @@ void SCtcAnalyticsEditorViewer::Construct(const FArguments& InArgs)
 
 SCtcAnalyticsEditorViewer::~SCtcAnalyticsEditorViewer()
 {
-	//Requesting garbage collection at the next frame so object released by TStrongObjectPtr are properly cleaned up.
+	// Requesting garbage collection at the next frame so object released by TStrongObjectPtr are properly cleaned up.
 	GEngine->ForceGarbageCollection(true);
 }
 

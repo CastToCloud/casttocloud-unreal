@@ -29,11 +29,11 @@ TAutoConsoleVariable CVarCtcAnalyticsPrintDebugFlags(
 );
 // clang-format on
 
-//TODO: Console command to instantly call flush with both wait & no wait as parameter
+// TODO: Console command to instantly call flush with both wait & no wait as parameter
 
 namespace
 {
-	//TOOD: This should be moved to dedicated file and handle all the way attribution should be done - via settings, via command line, via static delegate, maybe even blueprints?
+	// TOOD: This should be moved to dedicated file and handle all the way attribution should be done - via settings, via command line, via static delegate, maybe even blueprints?
 	FString GetPlatformAttribution()
 	{
 		FString PotentialValue;

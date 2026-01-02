@@ -159,16 +159,18 @@ void UCtcAnalyticsEditorSubsystem::UploadDataToBackend(UWorld* World, const FBox
 	Info.ExpireDuration = 5.0f;
 
 	FHttpResponsePtr Response = Request->GetResponse();
-	const bool bSuccess = Response && EHttpResponseCodes::IsOk(Response->GetResponseCode()); 
+	const bool bSuccess = Response && EHttpResponseCodes::IsOk(Response->GetResponseCode());
 	if (bSuccess)
 	{
 		Info.HyperlinkText = INVTEXT("View in dashboard");
-		Info.Hyperlink = FSimpleDelegate::CreateLambda([]()
-		{
-			const UCtcSharedSettings* SharedSettings = GetDefault<UCtcSharedSettings>();
-			const FString NewApiKeyRedirect = FString::Printf(TEXT("%s/organizations?redirectTo=/organizations/[slug]/explore-events"), *SharedSettings->DashboardUrl);
-			FPlatformProcess::LaunchURL(*NewApiKeyRedirect, nullptr, nullptr);
-		});
+		Info.Hyperlink = FSimpleDelegate::CreateLambda(
+			[]()
+			{
+				const UCtcSharedSettings* SharedSettings = GetDefault<UCtcSharedSettings>();
+				const FString NewApiKeyRedirect = FString::Printf(TEXT("%s/organizations?redirectTo=/organizations/[slug]/explore-events"), *SharedSettings->DashboardUrl);
+				FPlatformProcess::LaunchURL(*NewApiKeyRedirect, nullptr, nullptr);
+			}
+		);
 		Info.SubText = INVTEXT("Upload successful.");
 	}
 	else

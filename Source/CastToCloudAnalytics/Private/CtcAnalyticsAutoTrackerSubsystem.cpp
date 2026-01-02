@@ -2,6 +2,7 @@
 
 #include "CtcAnalyticsAutoTrackerSubsystem.h"
 
+#include <Engine/GameEngine.h>
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
 #include <Engine/World.h>
@@ -9,7 +10,6 @@
 #include <GameFramework/Pawn.h>
 #include <Kismet/GameplayStatics.h>
 #include <Null/NullPlatformApplicationMisc.h>
-#include <Engine/GameEngine.h>
 
 #if WITH_EDITOR
 #include <Editor.h>
@@ -42,8 +42,8 @@ namespace
 
 		return nullptr;
 	}
-	
-}
+
+} // namespace
 
 void UCtcAnalyticsAutoTrackerSubsystem::SetPlayerMovementTracking(bool bEnabled)
 {

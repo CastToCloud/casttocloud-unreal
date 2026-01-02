@@ -2,8 +2,8 @@
 
 #include "CtcAnalyticsEditorModule.h"
 
-#include <Misc/EngineVersionComparison.h>
 #include <Framework/Docking/TabManager.h>
+#include <Misc/EngineVersionComparison.h>
 #include <Widgets/Docking/SDockTab.h>
 #include <WorkspaceMenuStructure.h>
 #include <WorkspaceMenuStructureModule.h>

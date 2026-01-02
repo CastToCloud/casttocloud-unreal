@@ -2,14 +2,14 @@
 
 #include "CtcAnalyticsConsumer.h"
 
+#include <HttpModule.h>
+#include <Interfaces/IHttpRequest.h>
+#include <Interfaces/IHttpResponse.h>
+#include <Misc/CommandLine.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
 #include <Serialization/JsonSerializer.h>
 #include <Serialization/JsonWriter.h>
-#include <Misc/CommandLine.h>
-#include <HttpModule.h>
-#include <Interfaces/IHttpRequest.h>
-#include <Interfaces/IHttpResponse.h>
 
 #include "CtcAnalyticsLog.h"
 #include "CtcSharedSettings.h"
@@ -50,7 +50,7 @@ void FCtcAnalyticsApiConsumer::HandleEvents(const FString& SessionId, const TArr
 
 	if (bWait)
 	{
-		//TODO: The retry manager doesn't work with ProcessRequestUntilComplete - however we will need to replace this when downgrading anyway.
+		// TODO: The retry manager doesn't work with ProcessRequestUntilComplete - however we will need to replace this when downgrading anyway.
 		Request->ProcessRequestUntilComplete();
 		const bool bSuccess = Request->GetStatus() == EHttpRequestStatus::Succeeded;
 		OnEventResponse(Request, Request->GetResponse(), bSuccess);
