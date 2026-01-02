@@ -16,8 +16,8 @@
 
 FCtcAnalyticsApiConsumer::FCtcAnalyticsApiConsumer()
 {
-	constexpr FHttpRetrySystem::FRetryLimitCountSetting RetryLimit = FHttpRetrySystem::FRetryLimitCountSetting(3);
-	constexpr FHttpRetrySystem::FRetryTimeoutRelativeSecondsSetting InfiniteTimeout = FHttpRetrySystem::FRetryTimeoutRelativeSecondsSetting();
+	const FHttpRetrySystem::FRetryLimitCountSetting RetryLimit = FHttpRetrySystem::FRetryLimitCountSetting(3);
+	const FHttpRetrySystem::FRetryTimeoutRelativeSecondsSetting InfiniteTimeout = FHttpRetrySystem::FRetryTimeoutRelativeSecondsSetting();
 	HttpRetryManager = MakeShared<FHttpRetrySystem::FManager>(RetryLimit, InfiniteTimeout, RetryLimit);
 }
 
