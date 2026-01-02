@@ -375,18 +375,25 @@ void UCtcAnalyticsAutoTrackerSubsystem::TickPlayerMoveTracking(float DeltaTime)
 		return;
 	}
 
+	const UWorld* World = GetCurrentWorld();
+	APlayerController* LocalController = World ? World->GetFirstPlayerController() : nullptr;
+	if (!LocalController)
+	{
+		return;
+	}
+
 	TOptional<FTransform> AutomatedTransform;
 
 	if (Settings->AutoPlayerMoveTrackingMethod == ECtcAnalyticsSpatialTracking::PlayerPawn)
 	{
-		if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetCurrentWorld(), 0))
+		if (const APawn* PlayerPawn = LocalController->GetPawn())
 		{
 			AutomatedTransform = PlayerPawn->GetActorTransform();
 		}
 	}
 	else if (Settings->AutoPlayerMoveTrackingMethod == ECtcAnalyticsSpatialTracking::Camera)
 	{
-		if (const APlayerCameraManager* CameraManager = UGameplayStatics::GetPlayerCameraManager(GetCurrentWorld(), 0))
+		if (const APlayerCameraManager* CameraManager = LocalController->PlayerCameraManager)
 		{
 			AutomatedTransform = FTransform(CameraManager->GetCameraRotation(), CameraManager->GetCameraLocation());
 		}
