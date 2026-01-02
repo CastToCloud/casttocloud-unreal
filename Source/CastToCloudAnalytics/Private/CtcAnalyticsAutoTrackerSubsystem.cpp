@@ -110,6 +110,10 @@ UWorld* UCtcAnalyticsAutoTrackerSubsystem::GetTickableGameObjectWorld() const
 
 void UCtcAnalyticsAutoTrackerSubsystem::RegisterApplicationEvents()
 {
+	if (!FSlateApplication::IsInitialized())
+	{
+		return;
+	}
 	if (FNullPlatformApplicationMisc::IsUsingNullApplication())
 	{
 		return;
@@ -128,6 +132,10 @@ void UCtcAnalyticsAutoTrackerSubsystem::RegisterApplicationEvents()
 
 void UCtcAnalyticsAutoTrackerSubsystem::UnregisterApplicationEvents()
 {
+	if (!FSlateApplication::IsInitialized())
+	{
+		return;
+	}
 	if (FNullPlatformApplicationMisc::IsUsingNullApplication())
 	{
 		return;
