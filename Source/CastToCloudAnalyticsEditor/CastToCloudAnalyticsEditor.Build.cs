@@ -28,6 +28,7 @@ public class CastToCloudAnalyticsEditor : ModuleRules
 				"WorkspaceMenuStructure", 
 
 				"CastToCloud",
+				"CastToCloudAnalytics",
 			}
 		);
 	}

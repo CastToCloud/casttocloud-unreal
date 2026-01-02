@@ -17,7 +17,7 @@
 #include <Serialization/JsonSerializer.h>
 
 #include "CtcHelpers.h"
-#include "CtcSharedLog.h"
+#include "CtcAnalyticsLog.h"
 #include "CtcSharedSettings.h"
 
 UCtcAnalyticsEditorViewerSettings::UCtcAnalyticsEditorViewerSettings(const FObjectInitializer& ObjectInitializer)
@@ -277,7 +277,7 @@ void UCtcAnalyticsEditorApiViewerSource::OnApiResponseReceived(FHttpRequestPtr R
 	const FString ResponseContent = Response->GetContentAsString();
 	if (!EHttpResponseCodes::IsOk(Response->GetResponseCode()))
 	{
-		UE_LOG(LogCtcShared, Error, TEXT("Request failed with code: %s response: %s"), *LexToString(Response->GetResponseCode()), *ResponseContent);
+		UE_LOG(LogCtcAnalytics, Error, TEXT("Request failed with code: %s response: %s"), *LexToString(Response->GetResponseCode()), *ResponseContent);
 		CachedResult = MakeError(TEXT("Request failed"));
 		return;
 	}
@@ -286,7 +286,7 @@ void UCtcAnalyticsEditorApiViewerSource::OnApiResponseReceived(FHttpRequestPtr R
 	const bool bConvertSuccess = FJsonObjectConverter::JsonObjectStringToUStruct(ResponseContent, &HeatmapPoints, 0, 0);
 	if (!bConvertSuccess)
 	{
-		UE_LOG(LogCtcShared, Error, TEXT("Failed to parse response with content: %s"), *ResponseContent);
+		UE_LOG(LogCtcAnalytics, Error, TEXT("Failed to parse response with content: %s"), *ResponseContent);
 		CachedResult = MakeError(TEXT("Failed to parse response"));
 		return;
 	}

@@ -4,4 +4,4 @@
 
 #include <Logging/LogMacros.h>
 
-DECLARE_LOG_CATEGORY_EXTERN(LogCtcAnalytics, Log, All)
+CASTTOCLOUDANALYTICS_API DECLARE_LOG_CATEGORY_EXTERN(LogCtcAnalytics, Log, All)
