@@ -56,15 +56,7 @@ void UCtcAnalyticsAutoTrackerSubsystem::Initialize(FSubsystemCollectionBase& Col
 
 	RegisterApplicationEvents();
 
-#if WITH_EDITOR
-	FEditorDelegates::StartPIE.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPIEStarted);
-	FEditorDelegates::ShutdownPIE.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPIEEnded);
-#else
-	FCoreDelegates::OnPostEngineInit.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPostEngineInit);
-	FCoreDelegates::OnEnginePreExit.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnEnginePreExit);
-	FCoreDelegates::OnHandleSystemError.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnSystemError);
-	FCoreDelegates::GetApplicationWillTerminateDelegate().AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnApplicationWillTerminate);
-#endif
+	RegisterSessionDelegates();
 
 	FWorldDelegates::OnStartGameInstance.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnStartGameInstance);
 
@@ -85,6 +77,8 @@ void UCtcAnalyticsAutoTrackerSubsystem::Deinitialize()
 	Super::Deinitialize();
 
 	UnregisterApplicationEvents();
+
+	UnregisterSessionDelegates();
 }
 
 void UCtcAnalyticsAutoTrackerSubsystem::Tick(float DeltaTime)
@@ -149,6 +143,44 @@ void UCtcAnalyticsAutoTrackerSubsystem::UnregisterApplicationEvents()
 	}
 	WindowsMessageHandler.Reset();
 #endif
+}
+
+void UCtcAnalyticsAutoTrackerSubsystem::RegisterSessionDelegates()
+{
+#if WITH_EDITOR
+	if (GIsEditor)
+	{
+		FEditorDelegates::StartPIE.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPIEStarted);
+		FEditorDelegates::ShutdownPIE.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPIEEnded);
+
+		return;
+	}
+#endif
+
+	FCoreDelegates::OnPostEngineInit.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPostEngineInit);
+	FCoreDelegates::OnEnginePreExit.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnEnginePreExit);
+
+	FCoreDelegates::OnHandleSystemError.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnSystemError);
+	FCoreDelegates::GetApplicationWillTerminateDelegate().AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnApplicationWillTerminate);
+}
+
+void UCtcAnalyticsAutoTrackerSubsystem::UnregisterSessionDelegates()
+{
+#if WITH_EDITOR
+	if (GIsEditor)
+	{
+		FEditorDelegates::StartPIE.RemoveAll(this);
+		FEditorDelegates::ShutdownPIE.RemoveAll(this);
+
+		return;
+	}
+#endif
+
+	FCoreDelegates::OnPostEngineInit.RemoveAll(this);
+	FCoreDelegates::OnEnginePreExit.RemoveAll(this);
+
+	FCoreDelegates::OnHandleSystemError.RemoveAll(this);
+	FCoreDelegates::GetApplicationWillTerminateDelegate().RemoveAll(this);
 }
 
 #if WITH_EDITOR

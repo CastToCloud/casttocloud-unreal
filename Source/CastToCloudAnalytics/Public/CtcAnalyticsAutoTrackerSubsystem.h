@@ -49,6 +49,15 @@ private:
 	 * Unregisters the application specific delegates we were able to bind
 	 */
 	void UnregisterApplicationEvents();
+	/**
+	 * Registers delegates we should use to start & end the session
+	 */
+	void RegisterSessionDelegates();
+	/**
+	 * Registers delegates we should use to start & end the session
+	 */
+	void UnregisterSessionDelegates();
+
 #if WITH_EDITOR
 	/**
 	 * Callback executed when the Play In Editor (PIE) session starts
