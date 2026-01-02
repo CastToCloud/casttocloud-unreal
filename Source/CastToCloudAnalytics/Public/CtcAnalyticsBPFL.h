@@ -24,4 +24,12 @@ public:
 	static void RecordEventWithTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes = TArray<FAnalyticsEventAttribute>());
 
 	static void RecordEventWithOptionalTransform(const FString& EventName, TOptional<FTransform> Transform, const TArray<FAnalyticsEventAttribute>& Attributes = TArray<FAnalyticsEventAttribute>());
+
+	static void StartSession();
+
+	static void EndSession();
+
+	static void RecordEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes = TArray<FAnalyticsEventAttribute>());
+
+	static void RecordPanicEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes = TArray<FAnalyticsEventAttribute>());
 };

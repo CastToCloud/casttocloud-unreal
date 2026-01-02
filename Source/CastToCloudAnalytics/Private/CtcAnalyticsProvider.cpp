@@ -8,8 +8,6 @@
 #include <Engine/World.h>
 #include <GeneralProjectSettings.h>
 #include <GenericPlatform/GenericPlatformDriver.h>
-#include <HttpModule.h>
-#include <Interfaces/IHttpResponse.h>
 #include <Interfaces/IPluginManager.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/App.h>
@@ -17,12 +15,8 @@
 #include <Misc/FileHelper.h>
 #include <Runtime/Launch/Resources/Version.h>
 #include <Serialization/JsonSerializer.h>
-#include <UObject/Package.h>
 
-#if WITH_EDITOR
-#include <Editor.h>
-#endif
-
+#include "CtcAnalyticsConsumer.h"
 #include "CtcAnalyticsLog.h"
 #include "CtcHelpers.h"
 #include "CtcSharedSettings.h"
@@ -31,12 +25,15 @@
 TAutoConsoleVariable CVarCtcAnalyticsPrintDebugFlags(
 	TEXT("CastToCloud.Analytics.PrintDebugFlags"),
 	false,
-	TEXT("Whether comments are supported in the analytics user agent string")
+	TEXT("Prints to screen the debug state of the provider")
 );
 // clang-format on
 
+//TODO: Console command to instantly call flush with both wait & no wait as parameter
+
 namespace
 {
+	//TOOD: This should be moved to dedicated file and handle all the way attribution should be done - via settings, via command line, via static delegate, maybe even blueprints?
 	FString GetPlatformAttribution()
 	{
 		FString PotentialValue;
@@ -55,67 +52,16 @@ namespace
 		// TODO: It would be super interesting if we could get this based on the native OSS ? Maybe not by default but in general a potential idea.
 		return {};
 	}
-
-	void SaveEventsToFile(const FString& SessionId, const TArray<TSharedPtr<FJsonValue>>& Events)
-	{
-		const FString TargetFile = FPaths::ProjectSavedDir() / TEXT("CastToCloud") / TEXT("Analytics") / SessionId + TEXT(".json");
-		TArray<TSharedPtr<FJsonValue>> AllEvents;
-
-		FString PreviousEventsJSON;
-		if (FFileHelper::LoadFileToString(PreviousEventsJSON, *TargetFile))
-		{
-			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(PreviousEventsJSON);
-			FJsonSerializer::Deserialize(Reader, AllEvents);
-		}
-
-		AllEvents.Append(Events);
-
-		FString OutputString;
-		TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
-		FJsonSerializer::Serialize(AllEvents, Writer);
-
-		FFileHelper::SaveStringToFile(OutputString, *TargetFile);
-	}
-
-	void PrintEventsToLog(const FString& SessionId, const TArray<TSharedPtr<FJsonValue>>& Events)
-	{
-		UE_LOG(LogCtcAnalytics, Display, TEXT("Printing %s cached events for session %s:"), *LexToString(Events.Num()), *SessionId);
-		for (const TSharedPtr<FJsonValue>& Event : Events)
-		{
-			FString EventString;
-			TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&EventString);
-			FJsonSerializer::Serialize(Event->AsObject().ToSharedRef(), Writer);
-
-			UE_LOG(LogCtcAnalytics, Display, TEXT("    %s"), *EventString)
-		}
-	}
 } // namespace
 
 FCtcAnalyticsProvider::FCtcAnalyticsProvider()
 {
+	Consumers.Add(MakeShared<FCtcAnalyticsApiConsumer>());
+	Consumers.Add(MakeShared<FCtcAnalyticsFileConsumer>());
+	Consumers.Add(MakeShared<FCtcAnalyticsLogConsumer>());
+
 	// TODO: Move everything to the auto tracker subsystem and make it an engine subsystem.
 	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateRaw(this, &FCtcAnalyticsProvider::Tick), 0.0f);
-
-#if WITH_EDITOR
-	FEditorDelegates::StartPIE.AddRaw(this, &FCtcAnalyticsProvider::OnPIEStarted);
-	FEditorDelegates::ShutdownPIE.AddRaw(this, &FCtcAnalyticsProvider::OnPIEEnded);
-#else
-	FCoreDelegates::OnPostEngineInit.AddRaw(this, &FCtcAnalyticsProvider::OnPostEngineInit);
-	FCoreDelegates::OnEnginePreExit.AddRaw(this, &FCtcAnalyticsProvider::OnEnginePreExit);
-	FCoreDelegates::OnHandleSystemError.AddRaw(this, &FCtcAnalyticsProvider::OnSystemError);
-	FCoreDelegates::GetApplicationWillTerminateDelegate().AddRaw(this, &FCtcAnalyticsProvider::OnApplicationWillTerminate);
-#endif
-
-	// NOTE: There is no FWorldDelegates::BeginPlay so we register for world creation and then bind to the World's BeginPlay delegate.
-	FWorldDelegates::OnPostWorldInitialization.AddLambda(
-		[this](UWorld* World, FWorldInitializationValues WorldInitializationValues)
-		{
-			World->OnWorldBeginPlay.AddRaw(this, &FCtcAnalyticsProvider::OnWorldBeginPlay, World);
-		}
-	);
-
-	// NOTE: There is no FWorldDelegates::EndPlay, but OnWorldBeginTearDown is called during UWorld::EndPlay.
-	FWorldDelegates::OnWorldBeginTearDown.AddRaw(this, &FCtcAnalyticsProvider::OnWorldEndPlay);
 }
 
 void FCtcAnalyticsProvider::RecordEventWithTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes)
@@ -124,8 +70,15 @@ void FCtcAnalyticsProvider::RecordEventWithTransform(const FString& EventName, c
 	RecordEventInternal(EventName, InputTransform, Attributes);
 }
 
+void FCtcAnalyticsProvider::FlushEvents(bool bBlocking)
+{
+	SendCachedEvents(bBlocking);
+}
+
 bool FCtcAnalyticsProvider::StartSession(const TArray<FAnalyticsEventAttribute>& Attributes)
 {
+	RefreshBuiltInAttributes();
+
 	if (State == ESessionState::None)
 	{
 		State = ESessionState::Started;
@@ -150,6 +103,10 @@ void FCtcAnalyticsProvider::EndSession()
 	{
 		UE_LOG(LogCtcAnalytics, Warning, TEXT("Session not started or already ended. Ignoring EndSession call."));
 	}
+
+	SendCachedEvents(true);
+
+	Reset();
 }
 
 FString FCtcAnalyticsProvider::GetSessionID() const
@@ -165,7 +122,7 @@ bool FCtcAnalyticsProvider::SetSessionID(const FString& InSessionID)
 
 void FCtcAnalyticsProvider::FlushEvents()
 {
-	SendCachedEvents();
+	FlushEvents(false);
 }
 
 void FCtcAnalyticsProvider::SetUserID(const FString& InUserID)
@@ -364,177 +321,10 @@ void FCtcAnalyticsProvider::SendCachedEvents(bool bWait)
 	}
 	CachedEvents.Empty();
 
-	if (FParse::Param(FCommandLine::Get(), TEXT("AnalyticsToFile")))
+	for (const TSharedPtr<FCtcAnalyticsConsumer>& Consumer : Consumers)
 	{
-		SaveEventsToFile(GetSessionID(), EventsArray);
-		return;
+		Consumer->HandleEvents(GetSessionID(), EventsArray, bWait);
 	}
-
-	if (FParse::Param(FCommandLine::Get(), TEXT("AnalyticsToLog")))
-	{
-		PrintEventsToLog(GetSessionID(), EventsArray);
-		return;
-	}
-
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	const bool bAllowAnyConfiguration = FParse::Param(FCommandLine::Get(), TEXT("AnalyticsAnyConfiguration"));
-	if (Settings && !Settings->AllowedExecutables.IsCurrentConfigurationAllowed() && !bAllowAnyConfiguration)
-	{
-		UE_LOG(LogCtcAnalytics, Warning, TEXT("Skipping %s events for session %s because current configuration is not allowed"), *LexToString(EventsArray.Num()), *GetSessionID());
-		return;
-	}
-
-	TSharedRef<FJsonObject> RequestBody = MakeShared<FJsonObject>();
-	RequestBody->SetArrayField(TEXT("eventsPayload"), EventsArray);
-	RequestBody->SetBoolField(TEXT("geoTracking"), Settings->bEnableGeolocationAttribution);
-
-	FString RequestBodyString;
-	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBodyString);
-	ensure(FJsonSerializer::Serialize(RequestBody, Writer));
-
-	FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
-	Request->SetVerb(TEXT("POST"));
-	Request->SetURL(Settings->ApiUrl / TEXT("events/gameplay/record"));
-	Request->SetHeader(TEXT("X-API-Key"), Settings->RuntimeApiKey);
-	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-	Request->SetContentAsString(RequestBodyString);
-
-	if (bWait)
-	{
-		Request->ProcessRequestUntilComplete();
-		const bool bSuccess = Request->GetStatus() == EHttpRequestStatus::Succeeded;
-		OnEventResponse(Request, Request->GetResponse(), bSuccess);
-	}
-	else
-	{
-		Request->OnProcessRequestComplete().BindRaw(this, &FCtcAnalyticsProvider::OnEventResponse);
-		Request->ProcessRequest();
-	}
-}
-
-#if WITH_EDITOR
-void FCtcAnalyticsProvider::OnPIEStarted(bool bIsSimulating)
-{
-	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnPIEStarted called. Starting session."));
-
-	RefreshBuiltInAttributes();
-
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (Settings->bAutoStartSession && State == ESessionState::None)
-	{
-		StartSession({});
-	}
-}
-#endif
-
-#if WITH_EDITOR
-void FCtcAnalyticsProvider::OnPIEEnded(bool bIsSimulating)
-{
-	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnPIEEnded called. Ending session and sending cached events."));
-
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (Settings->bAutoStartSession && State == ESessionState::Started)
-	{
-		EndSession();
-	}
-
-	SendCachedEvents(true);
-
-	Reset();
-}
-#endif
-
-void FCtcAnalyticsProvider::OnPostEngineInit()
-{
-	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnPostEngineInit called. Starting session."));
-
-	RefreshBuiltInAttributes();
-
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (Settings->bAutoStartSession && State == ESessionState::None)
-	{
-		StartSession({});
-	}
-}
-
-void FCtcAnalyticsProvider::OnEnginePreExit()
-{
-	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnEnginePreExit called. Ending session and sending cached events."));
-
-	RecordEvent(TEXT("EngineExit"), TArray<FAnalyticsEventAttribute>());
-
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (Settings->bAutoStartSession && State == ESessionState::Started)
-	{
-		EndSession();
-	}
-
-
-	SendCachedEvents(true);
-
-	Reset();
-}
-
-void FCtcAnalyticsProvider::OnSystemError()
-{
-	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnSystemError called. Sending cached events."));
-
-	RecordEvent(TEXT("SystemError"), TArray<FAnalyticsEventAttribute>());
-
-	SendCachedEvents(true);
-}
-
-void FCtcAnalyticsProvider::OnApplicationWillTerminate()
-{
-	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnApplicationWillTerminate called. Sending cached events."));
-
-	RecordEvent(TEXT("ApplicationWillTerminate"), TArray<FAnalyticsEventAttribute>());
-
-	SendCachedEvents(true);
-}
-
-void FCtcAnalyticsProvider::OnWorldBeginPlay(UWorld* World)
-{
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (!Settings->bAutoWorldChangeTracking)
-	{
-		return;
-	}
-
-	const FString WorldPath = World->GetOutermost()->GetPathName();
-	if (WorldPath.IsEmpty() || WorldPath.StartsWith(TEXT("/Temp/Untitled")))
-	{
-		return;
-	}
-
-	if (World->WorldType != EWorldType::Game && World->WorldType != EWorldType::PIE)
-	{
-		return;
-	}
-
-	RecordEvent(TEXT("WorldStart"), TArray<FAnalyticsEventAttribute>());
-}
-
-void FCtcAnalyticsProvider::OnWorldEndPlay(UWorld* World)
-{
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (!Settings->bAutoWorldChangeTracking)
-	{
-		return;
-	}
-
-	const FString WorldPath = World->GetOutermost()->GetPathName();
-	if (WorldPath.IsEmpty() || WorldPath.StartsWith(TEXT("/Temp/Untitled")))
-	{
-		return;
-	}
-
-	if (World->WorldType != EWorldType::Game && World->WorldType != EWorldType::PIE)
-	{
-		return;
-	}
-
-	RecordEvent(TEXT("WorldEnd"), TArray<FAnalyticsEventAttribute>());
 }
 
 void FCtcAnalyticsProvider::Reset()
@@ -548,23 +338,4 @@ bool FCtcAnalyticsProvider::IsActiveProvider() const
 {
 	TSharedPtr<IAnalyticsProvider> Provider = FAnalytics::Get().GetDefaultConfiguredProvider();
 	return Provider.IsValid() && Provider.Get() == this;
-}
-
-void FCtcAnalyticsProvider::OnEventResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bSuccess)
-{
-	TRACE_CPUPROFILER_EVENT_SCOPE(FCtcAnalyticsProvider::OnEventResponse);
-
-	// TODO: Implement a retry system via HttpRetryManager
-	if (!bSuccess || !Response || !Response.IsValid())
-	{
-		UE_LOG(LogCtcAnalytics, Error, TEXT("Sending events to backend failed."));
-		return;
-	}
-	if (!EHttpResponseCodes::IsOk(Response->GetResponseCode()))
-	{
-		UE_LOG(LogCtcAnalytics, Error, TEXT("Request to send events to backend failed with code: %d body: {%s}"), Response->GetResponseCode(), *Response->GetContentAsString());
-		return;
-	}
-
-	UE_LOG(LogCtcAnalytics, VeryVerbose, TEXT("Sending events to backend successful. Response: {%s}"), *Response->GetContentAsString());
 }

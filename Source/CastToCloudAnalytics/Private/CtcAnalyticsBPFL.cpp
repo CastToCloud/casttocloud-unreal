@@ -61,3 +61,36 @@ void UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(const FString& EventNam
 		}
 	}
 }
+
+void UCtcAnalyticsBPFL::StartSession()
+{
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
+	{
+		CtcProvider->StartSession({});
+	}
+}
+
+void UCtcAnalyticsBPFL::EndSession()
+{
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
+	{
+		CtcProvider->EndSession();
+	}
+}
+
+void UCtcAnalyticsBPFL::RecordEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes)
+{
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
+	{
+		CtcProvider->RecordEvent(EventName, Attributes);
+	}
+}
+
+void UCtcAnalyticsBPFL::RecordPanicEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes)
+{
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
+	{
+		CtcProvider->RecordEvent(EventName, Attributes);
+		CtcProvider->FlushEvents(true);
+	}
+}

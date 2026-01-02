@@ -5,6 +5,8 @@
 #include <Interfaces/IAnalyticsProvider.h>
 #include <Interfaces/IHttpRequest.h>
 
+struct FCtcAnalyticsConsumer;
+
 class CASTTOCLOUDANALYTICS_API FCtcAnalyticsProvider : public IAnalyticsProvider
 {
 public:
@@ -27,6 +29,8 @@ public:
 
 	void RecordEventWithTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes);
 
+	void FlushEvents(bool bBlocking);
+
 private:
 	/**
 	 * Internal Record Event function used by all possible tracking methods
@@ -41,51 +45,10 @@ private:
 	 */
 	bool Tick(float DeltaTime);
 	/**
-	 * Callback executed when the HTTP response for the event request is retrieved
-	 */
-	void OnEventResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bSuccess);
-	/**
 	 * Send all the events currently in our cache clearing it
 	 * @parm bWait If true, waits for the request to complete before returning
 	 */
 	void SendCachedEvents(bool bWait = false);
-#if WITH_EDITOR
-	/**
-	 * Callback executed when the Play In Editor (PIE) session starts
-	 */
-	void OnPIEStarted(bool bIsSimulating);
-#endif
-
-#if WITH_EDITOR
-	/**
-	 * Callback executed when the Play In Editor (PIE) session ends
-	 */
-	void OnPIEEnded(bool bIsSimulating);
-#endif
-	/**
-	 * Callback executed when the engine has started
-	 */
-	void OnPostEngineInit();
-	/**
-	 * Callback executed when the engine is about to exit
-	 */
-	void OnEnginePreExit();
-	/**
-	 * Callback executed when the system encounters an error (e.g.: a crash)
-	 */
-	void OnSystemError();
-	/**
-	 * Callback executed when the operating system tries to terminate the application
-	 */
-	void OnApplicationWillTerminate();
-	/**
-	 * Callback executed when a world's BeginPlay is executed
-	 */
-	void OnWorldBeginPlay(UWorld* World);
-	/**
-	 * Callback executed when a world's EndPlay is executed
-	 */
-	void OnWorldEndPlay(UWorld* World);
 	/**
 	 * Resets state variables of the provider in preparation for the next session
 	 */
@@ -145,4 +108,6 @@ private:
 		Ended
 	};
 	ESessionState State = ESessionState::None;
+
+	TArray<TSharedPtr<FCtcAnalyticsConsumer>> Consumers;
 };

@@ -2,10 +2,11 @@
 
 #pragma once
 
-#include <Subsystems/GameInstanceSubsystem.h>
+#include <Subsystems/EngineSubsystem.h>
 #include <Tickable.h>
 
 #include "CtcAnalyticsWindowsMessageHandler.h"
+#include "Engine/GameInstance.h"
 
 #include "CtcAnalyticsAutoTrackerSubsystem.generated.h"
 
@@ -19,7 +20,7 @@ struct FIntervalTracker
 };
 
 UCLASS()
-class CASTTOCLOUDANALYTICS_API UCtcAnalyticsAutoTrackerSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
+class CASTTOCLOUDANALYTICS_API UCtcAnalyticsAutoTrackerSubsystem : public UEngineSubsystem, public FTickableGameObject
 {
 	GENERATED_BODY()
 
@@ -28,10 +29,10 @@ public:
 	void SetPlayerMovementTracking(bool bEnabled);
 
 private:
-	// ~Begin UGameInstanceSubsystem interface
+	// ~Begin UEngineSubsystem interface
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
-	// ~End UGameInstanceSubsystem interface
+	// ~End UEngineSubsystem interface
 
 	// FTickableGameObject interface
 	virtual void Tick(float DeltaTime) override;
@@ -48,10 +49,51 @@ private:
 	 * Unregisters the application specific delegates we were able to bind
 	 */
 	void UnregisterApplicationEvents();
+#if WITH_EDITOR
+	/**
+	 * Callback executed when the Play In Editor (PIE) session starts
+	 */
+	void OnPIEStarted(bool bIsSimulating);
+#endif
+
+#if WITH_EDITOR
+	/**
+	 * Callback executed when the Play In Editor (PIE) session ends
+	 */
+	void OnPIEEnded(bool bIsSimulating);
+#endif
+	/**
+	 * Callback executed when the engine has started
+	 */
+	void OnPostEngineInit();
+	/**
+	 * Callback executed when the engine is about to exit
+	 */
+	void OnEnginePreExit();
+	/**
+	 * Callback executed when the system encounters an error (e.g.: a crash)
+	 */
+	void OnSystemError();
+	/**
+	 * Callback executed when the operating system tries to terminate the application
+	 */
+	void OnApplicationWillTerminate();
+	/**
+	 * Callback executed when a world's BeginPlay is executed
+	 */
+	void OnWorldBeginPlay(UWorld* World);
+	/**
+	 * Callback executed when a world's EndPlay is executed
+	 */
+	void OnWorldEndPlay(UWorld* World);
 	/**
 	 * Callback executed when a Windows user presses the Alt+F4 key combination.
 	 */
 	void OnWindowsAltF4Pressed();
+	/**
+	 * Callback executed when the GameInstance is started
+	 */
+	void OnStartGameInstance(UGameInstance* GameInstance);
 	/**
 	 * Callback executed when the local player is added
 	 */
