@@ -21,7 +21,13 @@ public class CastToCloud : ModuleRules
 
 		if (Target.bBuildEditor)
 		{
-			PublicDependencyModuleNames.Add("SourceControl");
+			PublicDependencyModuleNames.AddRange(
+				new string[]
+				{
+					"SourceControl",
+					"UnrealEd",
+				}
+			);
 		}
 	}
 }

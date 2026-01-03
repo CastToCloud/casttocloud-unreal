@@ -2,7 +2,10 @@
 
 #pragma once
 
+#include <Misc/Optional.h>
+
 namespace CastToCloudHelpers
 {
-	TOptional<FString> CASTTOCLOUD_API GetWorldPackage(const UWorld* World = GWorld);
+	CASTTOCLOUD_API UWorld* GetCurrentWorld();
+	CASTTOCLOUD_API TOptional<FString> GetWorldPackage(const UWorld* World = nullptr);
 }

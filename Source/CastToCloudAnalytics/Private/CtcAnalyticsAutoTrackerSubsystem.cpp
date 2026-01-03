@@ -2,7 +2,6 @@
 
 #include "CtcAnalyticsAutoTrackerSubsystem.h"
 
-#include <Engine/GameEngine.h>
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
 #include <Engine/World.h>
@@ -17,33 +16,8 @@
 
 #include "CtcAnalyticsBPFL.h"
 #include "CtcAnalyticsLog.h"
+#include "CtcHelpers.h"
 #include "CtcSharedSettings.h"
-
-namespace
-{
-	UWorld* GetCurrentWorld()
-	{
-#if WITH_EDITOR
-		if (GIsEditor)
-		{
-			FWorldContext* PIEWorldContext = GEditor->GetPIEWorldContext();
-			if (PIEWorldContext)
-			{
-				return PIEWorldContext->World();
-			}
-
-			return GEditor->GetEditorWorldContext().World();
-		}
-#endif
-		if (UGameEngine* GameEngine = Cast<UGameEngine>(GEngine))
-		{
-			return GameEngine->GetGameWorld();
-		}
-
-		return nullptr;
-	}
-
-} // namespace
 
 void UCtcAnalyticsAutoTrackerSubsystem::SetPlayerMovementTracking(bool bEnabled)
 {
@@ -375,7 +349,7 @@ void UCtcAnalyticsAutoTrackerSubsystem::TickPlayerMoveTracking(float DeltaTime)
 		return;
 	}
 
-	const UWorld* World = GetCurrentWorld();
+	const UWorld* World = CastToCloudHelpers::GetCurrentWorld();
 	APlayerController* LocalController = World ? World->GetFirstPlayerController() : nullptr;
 	if (!LocalController)
 	{
