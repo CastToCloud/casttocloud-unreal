@@ -13,7 +13,6 @@ public class CastToCloud : ModuleRules
 				"CoreUObject",
 				"DeveloperSettings",
 				"Engine",
-				"Settings",
 				"Slate",
 				"SlateCore",
 			}
@@ -24,6 +23,7 @@ public class CastToCloud : ModuleRules
 			PublicDependencyModuleNames.AddRange(
 				new string[]
 				{
+					"Settings",
 					"SourceControl",
 					"UnrealEd",
 				}

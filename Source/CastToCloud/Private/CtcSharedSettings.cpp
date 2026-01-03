@@ -3,14 +3,14 @@
 #include "CtcSharedSettings.h"
 
 #include <HAL/FileManager.h>
-#include <ISettingsContainer.h>
-#include <ISettingsModule.h>
 #include <Misc/ConfigContext.h>
 #include <Misc/MessageDialog.h>
 #include <Modules/ModuleManager.h>
 
 #if WITH_EDITOR
+#include <ISettingsModule.h>
 #include <SourceControlHelpers.h>
+#include <ISettingsContainer.h>
 #endif
 
 namespace
