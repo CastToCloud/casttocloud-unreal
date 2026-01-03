@@ -2,6 +2,8 @@
 
 #include "CtcAnalyticsModule.h"
 
+#include <Modules/ModuleManager.h>
+
 #include "CtcAnalyticsProvider.h"
 
 FCtcAnalyticsModule& FCtcAnalyticsModule::Get()
