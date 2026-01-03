@@ -363,7 +363,7 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnPossessedPawnChanged(APawn* OldPawn, A
 void UCtcAnalyticsAutoTrackerSubsystem::TickPlayerMoveTracking(float DeltaTime)
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	const bool bShouldTrack = SendPlayerMoveEnabled.Get(false) || Settings->bAutoPlayerMoveTracking;
+	const bool bShouldTrack = SendPlayerMoveEnabled.IsSet() ? *SendPlayerMoveEnabled : Settings->bAutoPlayerMoveTracking;
 	if (!bShouldTrack)
 	{
 		return;
