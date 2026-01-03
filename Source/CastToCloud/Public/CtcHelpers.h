@@ -8,4 +8,4 @@ namespace CastToCloudHelpers
 {
 	CASTTOCLOUD_API UWorld* GetCurrentWorld();
 	CASTTOCLOUD_API TOptional<FString> GetWorldPackage(const UWorld* World = nullptr);
-}
+} // namespace CastToCloudHelpers
