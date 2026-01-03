@@ -38,5 +38,11 @@ TOptional<FString> CastToCloudHelpers::GetWorldPackage(const UWorld* World)
 		return {};
 	}
 
-	return UWorld::StripPIEPrefixFromPackageName(Target->GetPackage()->GetName(), Target->StreamingLevelsPrefix);
+	const FString CleanPackageName = UWorld::StripPIEPrefixFromPackageName(Target->GetPackage()->GetName(), Target->StreamingLevelsPrefix);
+	if (CleanPackageName.StartsWith(TEXT("/Temp/Untitled")))
+	{
+		return {};
+	}
+
+	return CleanPackageName;
 }

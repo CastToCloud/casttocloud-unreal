@@ -235,8 +235,8 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnWorldBeginPlay(UWorld* World)
 		return;
 	}
 
-	const FString WorldPath = World->GetOutermost()->GetPathName();
-	if (WorldPath.IsEmpty() || WorldPath.StartsWith(TEXT("/Temp/Untitled")))
+	const TOptional<FString> WorldPackage = CastToCloudHelpers::GetWorldPackage(World);
+	if (WorldPackage.Get(TEXT("")).IsEmpty())
 	{
 		return;
 	}
@@ -257,8 +257,8 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnWorldEndPlay(UWorld* World)
 		return;
 	}
 
-	const FString WorldPath = World->GetOutermost()->GetPathName();
-	if (WorldPath.IsEmpty() || WorldPath.StartsWith(TEXT("/Temp/Untitled")))
+	const TOptional<FString> WorldPackage = CastToCloudHelpers::GetWorldPackage(World);
+	if (WorldPackage.Get(TEXT("")).IsEmpty())
 	{
 		return;
 	}
