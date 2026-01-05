@@ -8,9 +8,9 @@
 #include <Modules/ModuleManager.h>
 
 #if WITH_EDITOR
+#include <ISettingsContainer.h>
 #include <ISettingsModule.h>
 #include <SourceControlHelpers.h>
-#include <ISettingsContainer.h>
 #endif
 
 namespace

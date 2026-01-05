@@ -7,8 +7,8 @@
 #include <WorkspaceMenuStructure.h>
 #include <WorkspaceMenuStructureModule.h>
 
-#include "CtcDefines.h"
 #include "CtcAnalyticsEditorSubsystem.h"
+#include "CtcDefines.h"
 #include "SCtcAnalyticsEditorViewer.h"
 
 namespace
