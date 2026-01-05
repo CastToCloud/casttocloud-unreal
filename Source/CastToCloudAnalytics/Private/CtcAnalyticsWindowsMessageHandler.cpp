@@ -2,6 +2,8 @@
 
 #include "CtcAnalyticsWindowsMessageHandler.h"
 
+#include <HAL/Platform.h>
+
 #if PLATFORM_WINDOWS
 
 bool FCtcWindowsMessageHandler::ProcessMessage(HWND Hwnd, uint32 Msg, WPARAM WParam, LPARAM LParam, int32& OutResult)

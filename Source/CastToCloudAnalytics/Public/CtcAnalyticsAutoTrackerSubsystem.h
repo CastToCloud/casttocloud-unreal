@@ -6,7 +6,8 @@
 #include <Tickable.h>
 
 #include "CtcAnalyticsWindowsMessageHandler.h"
-#include "Engine/GameInstance.h"
+#include <HAL/Platform.h>
+#include <Engine/GameInstance.h>
 
 #include "CtcAnalyticsAutoTrackerSubsystem.generated.h"
 

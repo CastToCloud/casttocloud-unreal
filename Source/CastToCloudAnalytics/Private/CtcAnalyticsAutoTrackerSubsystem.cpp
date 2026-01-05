@@ -9,6 +9,7 @@
 #include <GameFramework/Pawn.h>
 #include <Kismet/GameplayStatics.h>
 #include <Null/NullPlatformApplicationMisc.h>
+#include <HAL/Platform.h>
 
 #if WITH_EDITOR
 #include <Editor.h>
