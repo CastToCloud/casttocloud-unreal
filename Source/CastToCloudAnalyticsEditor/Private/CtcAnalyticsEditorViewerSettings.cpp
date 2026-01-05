@@ -197,7 +197,11 @@ void UCtcAnalyticsEditorFileViewerSource::RefreshResult()
 	FCtcAnalyticsEditorHeatmapPoints Result;
 	for (const TPair<FVector, int>& MapPoint : MapPoints)
 	{
-		Result.Points.Emplace(MapPoint.Key, MapPoint.Value);
+		FCtcAnalyticsEditorHeatmapPoint Point;
+		Point.Position = MapPoint.Key;
+		Point.Count = MapPoint.Value;
+
+		Result.Points.Add(Point);
 	}
 
 	CachedResult = MakeValue(Result);
