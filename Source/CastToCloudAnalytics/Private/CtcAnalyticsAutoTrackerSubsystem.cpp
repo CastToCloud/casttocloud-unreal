@@ -7,9 +7,9 @@
 #include <Engine/World.h>
 #include <Framework/Application/SlateApplication.h>
 #include <GameFramework/Pawn.h>
+#include <HAL/Platform.h>
 #include <Kismet/GameplayStatics.h>
 #include <Null/NullPlatformApplicationMisc.h>
-#include <HAL/Platform.h>
 
 #if WITH_EDITOR
 #include <Editor.h>

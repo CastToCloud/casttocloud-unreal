@@ -2,12 +2,12 @@
 
 #pragma once
 
+#include <Engine/GameInstance.h>
+#include <HAL/Platform.h>
 #include <Subsystems/EngineSubsystem.h>
 #include <Tickable.h>
 
 #include "CtcAnalyticsWindowsMessageHandler.h"
-#include <HAL/Platform.h>
-#include <Engine/GameInstance.h>
 
 #include "CtcAnalyticsAutoTrackerSubsystem.generated.h"
 
