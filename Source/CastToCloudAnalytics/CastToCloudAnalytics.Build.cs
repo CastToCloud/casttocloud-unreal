@@ -22,7 +22,6 @@ public class CastToCloudAnalytics : ModuleRules
 				"Projects",
 				"Slate",
 				"SlateCore",
-				"StudioTelemetry",
 
 				"CastToCloud",
 			}
