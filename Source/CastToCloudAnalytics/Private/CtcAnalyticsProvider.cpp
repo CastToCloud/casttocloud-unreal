@@ -8,11 +8,14 @@
 #include <Engine/World.h>
 #include <GeneralProjectSettings.h>
 #include <GenericPlatform/GenericPlatformDriver.h>
+#include <HardwareInfo.h>
 #include <Interfaces/IPluginManager.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/App.h>
 #include <Misc/CommandLine.h>
 #include <Misc/FileHelper.h>
+#include <RHIGlobals.h>
+#include <RHIStrings.h>
 #include <Runtime/Launch/Resources/Version.h>
 #include <Serialization/JsonSerializer.h>
 
@@ -177,10 +180,10 @@ void FCtcAnalyticsProvider::RefreshBuiltInAttributes()
 	BuildInUserAttributes.Emplace(TEXT("device_version"), FPlatformMisc::GetOSVersion());
 	BuildInUserAttributes.Emplace(TEXT("platform"), GetPlatformAttribution());
 
-	FGPUDriverInfo GpuDriverInfo = FPlatformMisc::GetGPUDriverInfo(FPlatformMisc::GetPrimaryGPUBrand());
-	BuildInUserAttributes.Emplace(TEXT("gpu.device"), GpuDriverInfo.DeviceDescription);
-	BuildInUserAttributes.Emplace(TEXT("gpu.provider"), GpuDriverInfo.ProviderName);
-	BuildInUserAttributes.Emplace(TEXT("gpu.version"), GpuDriverInfo.UserDriverVersion);
+	BuildInUserAttributes.Emplace(TEXT("gpu.rhi"), FHardwareInfo::GetHardwareInfo(NAME_RHI));
+	BuildInUserAttributes.Emplace(TEXT("gpu.device"), GRHIAdapterName);
+	BuildInUserAttributes.Emplace(TEXT("gpu.version"), GRHIAdapterUserDriverVersion);
+	BuildInUserAttributes.Emplace(TEXT("gpu.provider"), RHIVendorIdToString());
 }
 
 void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptional<FTransform>& Transform, const TArray<FAnalyticsEventAttribute>& Attributes)

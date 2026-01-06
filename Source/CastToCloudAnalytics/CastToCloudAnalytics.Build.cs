@@ -16,6 +16,7 @@ public class CastToCloudAnalytics : ModuleRules
 				"DeveloperSettings",
 				"Engine",
 				"EngineSettings",
+				"RHI",
 				"HTTP",
 				"Json",
 				"JsonUtilities",
