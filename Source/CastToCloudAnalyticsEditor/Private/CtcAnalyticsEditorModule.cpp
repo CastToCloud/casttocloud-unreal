@@ -2,10 +2,14 @@
 
 #include "CtcAnalyticsEditorModule.h"
 
-#include <Framework/Docking/TabManager.h>
-#include <Widgets/Docking/SDockTab.h>
+#include <Editor.h>
+#include <ToolMenus.h>
 #include <WorkspaceMenuStructure.h>
 #include <WorkspaceMenuStructureModule.h>
+#include <Framework/Docking/TabManager.h>
+#include <Framework/MultiBox/MultiBoxBuilder.h>
+#include <Widgets/SWidget.h>
+#include <Widgets/Docking/SDockTab.h>
 
 #include "CtcAnalyticsBackgroundSubsystem.h"
 #include "SCtcAnalyticsEditorViewer.h"
