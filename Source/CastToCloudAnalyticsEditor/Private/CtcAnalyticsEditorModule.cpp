@@ -10,8 +10,8 @@
 #include <Framework/MultiBox/MultiBoxBuilder.h>
 #include <Widgets/SWidget.h>
 #include <Widgets/Docking/SDockTab.h>
+#include <PropertyEditorModule.h>
 
-#include "CtcAnalyticsBackgroundSubsystem.h"
 #include "SCtcAnalyticsEditorViewer.h"
 
 namespace
@@ -46,6 +46,8 @@ namespace
 } // namespace
 
 const FName EventsViewerTabName = TEXT("EventsViewer");
+
+TMulticastDelegate<void(FMenuBuilder& MenuBuilder)> FCtcAnalyticsEditorModule::OnBuildGameplayEventsMenu;
 
 void FCtcAnalyticsEditorModule::StartupModule()
 {
@@ -98,23 +100,11 @@ TSharedRef<SWidget> FCtcAnalyticsEditorModule::GenerateToolbarMenuContent()
 	FMenuBuilder MenuBuilder(true, nullptr);
 
 	MenuBuilder.BeginSection("GameplayEvents", INVTEXT("Gameplay Events"));
-	MenuBuilder.AddMenuEntry(
-		INVTEXT("Upload Background"),
-		INVTEXT("Uploads the current viewport as a background"),
-		FSlateIcon(FAppStyle::GetAppStyleSetName(), TEXT("Icons.Plus")),
-		FUIAction(FExecuteAction::CreateLambda(
-			[]()
-			{
-				GEditor->GetEditorSubsystem<UCtcAnalyticsBackgroundSubsystem>()->UploadEventsBackground();
-			}
-		))
-	);
-	//TODO: Add input field to change world name
-	// ^ for the above check how we store it in the database too
+	OnBuildGameplayEventsMenu.Broadcast(MenuBuilder);
+	MenuBuilder.EndSection();
 
 	//TODO: Checkbox if we should warn about configuration issues
 	//TODO: Add warning state button - provider not configured, missing API Keys, current configuration doesn't allow sending events
-	MenuBuilder.EndSection();
 
 	return MenuBuilder.MakeWidget();
 }

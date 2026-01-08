@@ -4,11 +4,17 @@
 
 #include <Modules/ModuleManager.h>
 
+class FMenuBuilder;
+class SWidget;
 class SDockTab;
 class FSpawnTabArgs;
 
 class FCtcAnalyticsEditorModule : public IModuleInterface
 {
+public:
+	static TMulticastDelegate<void(FMenuBuilder& MenuBuilder)> OnBuildGameplayEventsMenu;
+
+private:
 	// ~Begin IModuleInterface interface
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;

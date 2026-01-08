@@ -3,45 +3,65 @@
 #include "CtcAnalyticsBackgroundSubsystem.h"
 
 #include <AutomationBlueprintFunctionLibrary.h>
-#include <Dom/JsonObject.h>
 #include <EditorModeManager.h>
-#include <Framework/Application/SlateApplication.h>
-#include <Framework/Notifications/NotificationManager.h>
 #include <HttpModule.h>
 #include <IImageWrapper.h>
 #include <IImageWrapperModule.h>
-#include <Interfaces/IHttpRequest.h>
-#include <Interfaces/IHttpResponse.h>
+#include <ISinglePropertyView.h>
 #include <LevelEditorSubsystem.h>
-#include <Misc/Base64.h>
-#include <Modules/ModuleManager.h>
-#include <Runtime/Launch/Resources/Version.h>
 #include <SEditorViewport.h>
 #include <SceneView.h>
+#include <Dom/JsonObject.h>
+#include <Engine/WorldInitializationValues.h>
+#include <Framework/Application/SlateApplication.h>
+#include <Framework/MultiBox/MultiBoxBuilder.h>
+#include <Framework/Notifications/NotificationManager.h>
+#include <Interfaces/IHttpRequest.h>
+#include <Interfaces/IHttpResponse.h>
+#include <Misc/Base64.h>
+#include <Misc/MessageDialog.h>
+#include <Modules/ModuleManager.h>
+#include <Runtime/Launch/Resources/Version.h>
 #include <Serialization/JsonSerializer.h>
 #include <Serialization/JsonWriter.h>
 #include <Slate/SceneViewport.h>
 #include <Widgets/Notifications/SNotificationList.h>
 
+#include "CtcAnalyticsEditorModule.h"
+#include "CtcAnalyticsLog.h"
+#include "CtcHelpers.h"
 #include "CtcSharedSettings.h"
 
-static FAutoConsoleCommandWithWorldAndArgs UploadAnalyticsBackgroundCommand(
-	TEXT("CastToCloud.UploadAnalyticsBackground"),
+static FAutoConsoleCommand UploadCurrentViewportAsBackground(
+	TEXT("CastToCloud.Analytics.UploadCurrentViewportAsBackground"),
 	TEXT(""),
-	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
-		[](const TArray<FString>& Args, UWorld* InWorld)
+	FConsoleCommandWithArgsDelegate::CreateLambda(
+		[](const TArray<FString>& Args)
 		{
-			GEditor->GetEditorSubsystem<UCtcAnalyticsBackgroundSubsystem>()->UploadEventsBackground(InWorld);
+			if (Args.Num() == 0)
+			{
+				GEditor->GetEditorSubsystem<UCtcAnalyticsBackgroundSubsystem>()->UploadCurrentViewportAsBackground();
+			}
+			else if (Args.Num() == 1)
+			{
+				GEditor->GetEditorSubsystem<UCtcAnalyticsBackgroundSubsystem>()->UploadCurrentViewportAsBackground(Args[0]);
+			}
+			else
+			{
+				UE_LOG(LogCtcAnalytics, Error, TEXT("UploadCurrentViewportAsBackground - invalid number of arguments"));
+			}
 		}
 	)
 );
 
-void UCtcAnalyticsBackgroundSubsystem::UploadEventsBackground(UWorld* World)
+void UCtcAnalyticsBackgroundSubsystem::UploadCurrentViewportAsBackground()
 {
-	if (!World)
-	{
-		World = GWorld;
-	}
+	UploadCurrentViewportAsBackground(BackgroundName);
+}
+
+void UCtcAnalyticsBackgroundSubsystem::UploadCurrentViewportAsBackground(const FString& InName)
+{
+	UWorld* World = CastToCloudHelpers::GetCurrentWorld();
 
 	FEditorViewportClient* ViewportClient = StaticCast<FEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
 	if (ViewportClient->IsActiveViewportType(LVT_Perspective))
@@ -65,7 +85,110 @@ void UCtcAnalyticsBackgroundSubsystem::UploadEventsBackground(UWorld* World)
 	const FBox Bounds = GetViewportBounds(SceneViewportWidget);
 	const TArray<uint8> ImageData = GetScreenshotImageData(SceneViewportWidget);
 
-	UploadDataToBackend(World, Bounds, ImageData);
+	UploadDataToBackend(World, Bounds, ImageData, InName);
+}
+
+void UCtcAnalyticsBackgroundSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	FWorldDelegates::OnPostWorldInitialization.AddUObject(this, &UCtcAnalyticsBackgroundSubsystem::OnPostWorldInitialization);
+	FCtcAnalyticsEditorModule::OnBuildGameplayEventsMenu.AddUObject(this, &UCtcAnalyticsBackgroundSubsystem::OnBuildGameplayEventsMenu);
+}
+
+void UCtcAnalyticsBackgroundSubsystem::OnBuildGameplayEventsMenu(FMenuBuilder& MenuBuilder)
+{
+	const FName BackgroundNameProperty = GET_MEMBER_NAME_CHECKED(UCtcAnalyticsBackgroundSubsystem, BackgroundName);
+
+	FSinglePropertyParams Params;
+	Params.NamePlacement = EPropertyNamePlacement::Hidden;
+	Params.bHideResetToDefault = true;
+
+	FPropertyEditorModule& PropertyEditorModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+	const TSharedPtr<ISinglePropertyView> SinglePropertyView = PropertyEditorModule.CreateSingleProperty(this, BackgroundNameProperty, Params);
+
+	MenuBuilder.AddWidget(SinglePropertyView.ToSharedRef(), INVTEXT("Background Name"), true);
+
+	MenuBuilder.AddMenuEntry(
+		INVTEXT("Upload Background"),
+		INVTEXT("Uploads the current viewport as a background"),
+		FSlateIcon(),
+		FUIAction(FExecuteAction::CreateUObject(this, &UCtcAnalyticsBackgroundSubsystem::UploadCurrentViewportAsBackground))
+	);
+}
+
+void UCtcAnalyticsBackgroundSubsystem::OnPostWorldInitialization(UWorld* World, const FWorldInitializationValues IVS)
+{
+	if (World->WorldType != EWorldType::Editor)
+	{
+		return;
+	}
+
+	BackgroundName = World->GetMapName();
+}
+
+void UCtcAnalyticsBackgroundSubsystem::UploadDataToBackend(UWorld* World, const FBox Bounds, const TArray<uint8> ImageData, const FString& Name)
+{
+	const FString EncodedImage = FBase64::Encode(ImageData);
+
+	TSharedRef<FJsonObject> PayloadObject = MakeShared<FJsonObject>();
+	PayloadObject->SetStringField(TEXT("imageData"), EncodedImage);
+	PayloadObject->SetNumberField(TEXT("startX"), Bounds.Min.X);
+	PayloadObject->SetNumberField(TEXT("startY"), Bounds.Min.Y);
+	PayloadObject->SetNumberField(TEXT("startZ"), Bounds.Min.Z);
+	PayloadObject->SetNumberField(TEXT("endX"), Bounds.Max.X);
+	PayloadObject->SetNumberField(TEXT("endY"), Bounds.Max.Y);
+	PayloadObject->SetNumberField(TEXT("endZ"), Bounds.Max.Z);
+	PayloadObject->SetStringField(TEXT("engineVersion"), FString::Printf(TEXT("%d.%d.%d"), ENGINE_MAJOR_VERSION, ENGINE_MINOR_VERSION, ENGINE_PATCH_VERSION));
+	PayloadObject->SetStringField(TEXT("assetPath"), *CastToCloudHelpers::GetWorldPackage(World));
+	PayloadObject->SetStringField(TEXT("assetName"), Name);
+
+	FString JsonString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonString);
+	ensure(FJsonSerializer::Serialize(PayloadObject, Writer));
+
+	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
+
+	FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
+	Request->SetVerb(TEXT("POST"));
+	Request->SetURL(Settings->ApiUrl / TEXT("events/gameplay/upload-background"));
+	Request->SetHeader(TEXT("X-API-Key"), Settings->DeveloperApiKey);
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Request->SetContentAsString(JsonString);
+
+	Request->ProcessRequestUntilComplete();
+
+	FText NotificationTitle = INVTEXT("Background Upload");
+	FNotificationInfo Info(NotificationTitle);
+	Info.bUseSuccessFailIcons = true;
+	Info.bFireAndForget = true;
+	Info.FadeOutDuration = 5.0f;
+	Info.ExpireDuration = 5.0f;
+
+	FHttpResponsePtr Response = Request->GetResponse();
+	const bool bSuccess = Response && EHttpResponseCodes::IsOk(Response->GetResponseCode());
+	if (bSuccess)
+	{
+		Info.HyperlinkText = INVTEXT("View in dashboard");
+		Info.Hyperlink = FSimpleDelegate::CreateLambda(
+			[]()
+			{
+				const UCtcSharedSettings* SharedSettings = GetDefault<UCtcSharedSettings>();
+				const FString NewApiKeyRedirect = FString::Printf(TEXT("%s/organizations?redirectTo=/organizations/[slug]/explore-events"), *SharedSettings->DashboardUrl);
+				FPlatformProcess::LaunchURL(*NewApiKeyRedirect, nullptr, nullptr);
+			}
+		);
+		Info.SubText = INVTEXT("Upload successful.");
+	}
+	else
+	{
+		const FString Reason = Response ? Response->GetContentAsString() : TEXT("Unknown");
+		const FString ErrorMessage = FString::Printf(TEXT("Upload failed. Response: %s"), *Reason);
+		Info.SubText = FText::FromString(ErrorMessage);
+	}
+
+	TSharedPtr<SNotificationItem> Notification = FSlateNotificationManager::Get().AddNotification(Info);
+	Notification->SetCompletionState(bSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
 }
 
 FBox UCtcAnalyticsBackgroundSubsystem::GetViewportBounds(TSharedPtr<SViewport> InViewport) const
@@ -127,68 +250,4 @@ TArray<uint8> UCtcAnalyticsBackgroundSubsystem::GetScreenshotImageData(TSharedPt
 	ImageData.Append(RawImageData.GetData(), RawImageData.Num());
 
 	return ImageData;
-}
-
-void UCtcAnalyticsBackgroundSubsystem::UploadDataToBackend(UWorld* World, const FBox Bounds, const TArray<uint8> ImageData)
-{
-	const FString EncodedImage = FBase64::Encode(ImageData);
-
-	TSharedRef<FJsonObject> PayloadObject = MakeShared<FJsonObject>();
-	PayloadObject->SetStringField(TEXT("imageData"), EncodedImage);
-	PayloadObject->SetNumberField(TEXT("startX"), Bounds.Min.X);
-	PayloadObject->SetNumberField(TEXT("startY"), Bounds.Min.Y);
-	PayloadObject->SetNumberField(TEXT("startZ"), Bounds.Min.Z);
-	PayloadObject->SetNumberField(TEXT("endX"), Bounds.Max.X);
-	PayloadObject->SetNumberField(TEXT("endY"), Bounds.Max.Y);
-	PayloadObject->SetNumberField(TEXT("endZ"), Bounds.Max.Z);
-	PayloadObject->SetStringField(TEXT("engineVersion"), FString::Printf(TEXT("%d.%d.%d"), ENGINE_MAJOR_VERSION, ENGINE_MINOR_VERSION, ENGINE_PATCH_VERSION));
-	PayloadObject->SetStringField(TEXT("assetPath"), World->GetPackage()->GetPathName());
-	PayloadObject->SetStringField(TEXT("assetName"), World->GetMapName());
-
-	FString JsonString;
-	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonString);
-	ensure(FJsonSerializer::Serialize(PayloadObject, Writer));
-
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-
-	FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
-	Request->SetVerb(TEXT("POST"));
-	Request->SetURL(Settings->ApiUrl / TEXT("events/gameplay/upload-background"));
-	Request->SetHeader(TEXT("X-API-Key"), Settings->DeveloperApiKey);
-	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-	Request->SetContentAsString(JsonString);
-
-	Request->ProcessRequestUntilComplete();
-
-	FText NotificationTitle = INVTEXT("Background Upload");
-	FNotificationInfo Info(NotificationTitle);
-	Info.bUseSuccessFailIcons = true;
-	Info.bFireAndForget = true;
-	Info.FadeOutDuration = 5.0f;
-	Info.ExpireDuration = 5.0f;
-
-	FHttpResponsePtr Response = Request->GetResponse();
-	const bool bSuccess = Response && EHttpResponseCodes::IsOk(Response->GetResponseCode());
-	if (bSuccess)
-	{
-		Info.HyperlinkText = INVTEXT("View in dashboard");
-		Info.Hyperlink = FSimpleDelegate::CreateLambda(
-			[]()
-			{
-				const UCtcSharedSettings* SharedSettings = GetDefault<UCtcSharedSettings>();
-				const FString NewApiKeyRedirect = FString::Printf(TEXT("%s/organizations?redirectTo=/organizations/[slug]/explore-events"), *SharedSettings->DashboardUrl);
-				FPlatformProcess::LaunchURL(*NewApiKeyRedirect, nullptr, nullptr);
-			}
-		);
-		Info.SubText = INVTEXT("Upload successful.");
-	}
-	else
-	{
-		const FString Reason = Response ? Response->GetContentAsString() : TEXT("Unknown");
-		const FString ErrorMessage = FString::Printf(TEXT("Upload failed. Response: %s"), *Reason);
-		Info.SubText = FText::FromString(ErrorMessage);
-	}
-
-	TSharedPtr<SNotificationItem> Notification = FSlateNotificationManager::Get().AddNotification(Info);
-	Notification->SetCompletionState(bSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
 }
