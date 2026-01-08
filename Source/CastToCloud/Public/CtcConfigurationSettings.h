@@ -42,20 +42,21 @@ struct CASTTOCLOUD_API FCtcConfigurationSettings
 	void RemoveFlavor(EBuildConfiguration InConfiguration, EBuildTargetType InTargetType);
 };
 
-static FCtcConfigurationSettings ProductionDedicatedServer = FCtcConfigurationSettings(
-	{.Flavors =
-		 {
-			 FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Server),
-			 FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Server),
-		 }}
+static FCtcConfigurationSettings PackagedDedicatedServer = FCtcConfigurationSettings(
+	{.Flavors = {
+		FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Server),
+		FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Server),
+		FCtcConfigurationFlavourPair(EBuildConfiguration::Development, EBuildTargetType::Server),
+	}}
 );
 
-static FCtcConfigurationSettings ProductionGameClients = FCtcConfigurationSettings(
-	{.Flavors =
-		 {
-			 FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Game),
-			 FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Game),
-			 FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Client),
-			 FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Client),
-		 }}
+static FCtcConfigurationSettings PackagedGameClients = FCtcConfigurationSettings(
+	{.Flavors = {
+		FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Game),
+		FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Game),
+		FCtcConfigurationFlavourPair(EBuildConfiguration::Development, EBuildTargetType::Game),
+		FCtcConfigurationFlavourPair(EBuildConfiguration::Shipping, EBuildTargetType::Client),
+		FCtcConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Client),
+		FCtcConfigurationFlavourPair(EBuildConfiguration::Development, EBuildTargetType::Client),
+	}}
 );

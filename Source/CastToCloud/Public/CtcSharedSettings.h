@@ -56,7 +56,7 @@ public:
 	bool NeedsToSetAnalyticsProvider() const;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Sending")
-	FCtcConfigurationSettings AllowedExecutables = ProductionGameClients;
+	FCtcConfigurationSettings AllowedExecutables = PackagedGameClients;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Sending", meta = (Units = "s"))
 	float SendInterval = 60.0f;
@@ -74,10 +74,10 @@ public:
 	bool bAutoWorldChangeTracking = true;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking")
-	bool bAutoPlayerMoveTracking = false;
+	bool bAutoPlayerMoveTracking = true;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", Units = "s"))
-	float AutoPlayerMoveTrackingInterval = 10.0f;
+	float AutoPlayerMoveTrackingInterval = 5.0f;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", InvalidEnumValues = "Disabled"))
 	ECtcAnalyticsSpatialTracking AutoPlayerMoveTrackingMethod = ECtcAnalyticsSpatialTracking::PlayerPawn;
