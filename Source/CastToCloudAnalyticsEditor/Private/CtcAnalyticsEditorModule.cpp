@@ -7,8 +7,7 @@
 #include <WorkspaceMenuStructure.h>
 #include <WorkspaceMenuStructureModule.h>
 
-#include "CtcAnalyticsEditorSubsystem.h"
-#include "CtcDefines.h"
+#include "CtcAnalyticsBackgroundSubsystem.h"
 #include "SCtcAnalyticsEditorViewer.h"
 
 namespace
@@ -70,32 +69,50 @@ void FCtcAnalyticsEditorModule::RegisterToolbarExtension()
 {
 	FToolMenuOwnerScoped OwnerScoped(this);
 
-#if UE_VERSION_NEWER_THAN_OR_EQUAL(5, 6, 0)
-	const FName MenuToExtend = "LevelEditor.ViewportToolbar.Settings";
-#else
-	const FName MenuToExtend = "LevelEditor.LevelEditorToolBar.LevelToolbarQuickSettings";
-#endif
+	UToolMenu* LevelEditorToolbar = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.User");
+	FToolMenuSection& Section = LevelEditorToolbar->AddSection("CastToCloud");
 
-	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu(MenuToExtend);
-	FToolMenuSection& SettingsSection = Menu->AddSection(FName("CastToCloud"), INVTEXT("Cast To Cloud"));
-
-	FToolMenuEntry& Entry = SettingsSection.AddMenuEntry(
-		FName("UploadBackground"),
-		INVTEXT("Upload Background"),
-		INVTEXT("Upload the current viewport as a screenshot to be used as an analytics background."),
-		FSlateIcon(FAppStyle::GetAppStyleSetName(), TEXT("Icons.Plus")),
-		FExecuteAction::CreateLambda(
-			[]()
-			{
-				GEditor->GetEditorSubsystem<UCtcAnalyticsEditorSubsystem>()->UploadEventsBackground();
-			}
-		)
-	);
+	FToolMenuEntry SectionDropdown = FToolMenuEntry::InitComboButton(
+		"CastToCloud",
+		FUIAction(),
+		FOnGetContent::CreateRaw(this, &FCtcAnalyticsEditorModule::GenerateToolbarMenuContent),
+		INVTEXT("Cast To Cloud"),
+		INVTEXT("Cast To Cloud Actions"),
+		FSlateIcon(),
+		false);
+	SectionDropdown.StyleNameOverride = "CalloutToolbar";
+	Section.AddEntry(SectionDropdown);
 }
 
 void FCtcAnalyticsEditorModule::UnregisterToolbarExtension()
 {
 	UToolMenus::UnregisterOwner(this);
+}
+
+TSharedRef<SWidget> FCtcAnalyticsEditorModule::GenerateToolbarMenuContent()
+{
+	FMenuBuilder MenuBuilder(true, nullptr);
+
+	MenuBuilder.BeginSection("GameplayEvents", INVTEXT("Gameplay Events"));
+	MenuBuilder.AddMenuEntry(
+		INVTEXT("Upload Background"),
+		INVTEXT("Uploads the current viewport as a background"),
+		FSlateIcon(FAppStyle::GetAppStyleSetName(), TEXT("Icons.Plus")),
+		FUIAction(FExecuteAction::CreateLambda(
+			[]()
+			{
+				GEditor->GetEditorSubsystem<UCtcAnalyticsBackgroundSubsystem>()->UploadEventsBackground();
+			}
+		))
+	);
+	//TODO: Add input field to change world name
+	// ^ for the above check how we store it in the database too
+
+	//TODO: Checkbox if we should warn about configuration issues
+	//TODO: Add warning state button - provider not configured, missing API Keys, current configuration doesn't allow sending events
+	MenuBuilder.EndSection();
+
+	return MenuBuilder.MakeWidget();
 }
 
 TSharedRef<SDockTab> FCtcAnalyticsEditorModule::SpawnEventsViewerTab(const FSpawnTabArgs& SpawnTabArgs)

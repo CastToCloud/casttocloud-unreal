@@ -17,5 +17,7 @@ class FCtcAnalyticsEditorModule : public IModuleInterface
 	void RegisterToolbarExtension();
 	void UnregisterToolbarExtension();
 
+	TSharedRef<SWidget> GenerateToolbarMenuContent();
+
 	TSharedRef<SDockTab> SpawnEventsViewerTab(const FSpawnTabArgs& SpawnTabArgs);
 };
