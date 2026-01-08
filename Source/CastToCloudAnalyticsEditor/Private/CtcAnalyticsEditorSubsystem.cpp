@@ -112,6 +112,7 @@ TArray<uint8> UCtcAnalyticsEditorSubsystem::GetScreenshotImageData(TSharedPtr<SV
 		GEditor->UpdateSingleViewportClient(Viewport, true, false);
 	}
 
+	//TODO: It would be nice to give the user a selection tool so they can have a section of the viewport if they want.
 	TArray<FColor> ColorData;
 	FIntVector Size;
 	FSlateApplication::Get().TakeScreenshot(InViewport.ToSharedRef(), ColorData, Size);
