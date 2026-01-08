@@ -1,6 +1,6 @@
 // Copyright Cast To Cloud 2024-2026. All Rights Reserved.
 
-#include "CtcAnalyticsEditorSubsystem.h"
+#include "CtcAnalyticsBackgroundSubsystem.h"
 
 #include <AutomationBlueprintFunctionLibrary.h>
 #include <Dom/JsonObject.h>
@@ -31,12 +31,12 @@ static FAutoConsoleCommandWithWorldAndArgs UploadAnalyticsBackgroundCommand(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
 		[](const TArray<FString>& Args, UWorld* InWorld)
 		{
-			GEditor->GetEditorSubsystem<UCtcAnalyticsEditorSubsystem>()->UploadEventsBackground(InWorld);
+			GEditor->GetEditorSubsystem<UCtcAnalyticsBackgroundSubsystem>()->UploadEventsBackground(InWorld);
 		}
 	)
 );
 
-void UCtcAnalyticsEditorSubsystem::UploadEventsBackground(UWorld* World)
+void UCtcAnalyticsBackgroundSubsystem::UploadEventsBackground(UWorld* World)
 {
 	if (!World)
 	{
@@ -68,7 +68,7 @@ void UCtcAnalyticsEditorSubsystem::UploadEventsBackground(UWorld* World)
 	UploadDataToBackend(World, Bounds, ImageData);
 }
 
-FBox UCtcAnalyticsEditorSubsystem::GetViewportBounds(TSharedPtr<SViewport> InViewport) const
+FBox UCtcAnalyticsBackgroundSubsystem::GetViewportBounds(TSharedPtr<SViewport> InViewport) const
 {
 	const FVector2D TopLeft = FVector2D::Zero();
 	const FVector2D BottomRight = InViewport->GetCachedGeometry().GetAbsoluteSize();
@@ -86,7 +86,7 @@ FBox UCtcAnalyticsEditorSubsystem::GetViewportBounds(TSharedPtr<SViewport> InVie
 	return FBox(TArray({StartPos, EndPos}));
 }
 
-TArray<uint8> UCtcAnalyticsEditorSubsystem::GetScreenshotImageData(TSharedPtr<SViewport> InViewport) const
+TArray<uint8> UCtcAnalyticsBackgroundSubsystem::GetScreenshotImageData(TSharedPtr<SViewport> InViewport) const
 {
 	ULevelEditorSubsystem* LevelEditorSubsystem = GEditor->GetEditorSubsystem<ULevelEditorSubsystem>();
 	const bool bInitialGameView = LevelEditorSubsystem->EditorGetGameView();
@@ -129,7 +129,7 @@ TArray<uint8> UCtcAnalyticsEditorSubsystem::GetScreenshotImageData(TSharedPtr<SV
 	return ImageData;
 }
 
-void UCtcAnalyticsEditorSubsystem::UploadDataToBackend(UWorld* World, const FBox Bounds, const TArray<uint8> ImageData)
+void UCtcAnalyticsBackgroundSubsystem::UploadDataToBackend(UWorld* World, const FBox Bounds, const TArray<uint8> ImageData)
 {
 	const FString EncodedImage = FBase64::Encode(ImageData);
 

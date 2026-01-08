@@ -4,10 +4,10 @@
 
 #include <EditorSubsystem.h>
 
-#include "CtcAnalyticsEditorSubsystem.generated.h"
+#include "CtcAnalyticsBackgroundSubsystem.generated.h"
 
 UCLASS()
-class UCtcAnalyticsEditorSubsystem : public UEditorSubsystem
+class UCtcAnalyticsBackgroundSubsystem : public UEditorSubsystem
 {
 	GENERATED_BODY()
 
