@@ -43,21 +43,29 @@ void UCtcAnalyticsEditorSubsystem::UploadEventsBackground(UWorld* World)
 		World = GWorld;
 	}
 
-	TSharedPtr<SViewport> SceneViewportWidget = GetScreenshotViewport();
+	FEditorViewportClient* ViewportClient = StaticCast<FEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
+	if (ViewportClient->IsActiveViewportType(LVT_Perspective))
+	{
+		const FText WarningTitle = INVTEXT("Upload Background Error");
+		const FText WarningMessage = INVTEXT("Background screenshots need to be take in orthographic view. Switch now?");
+		const EAppReturnType::Type Choice = FMessageDialog::Open(EAppMsgCategory::Warning, EAppMsgType::OkCancel, WarningMessage, WarningTitle);
+
+		if (Choice == EAppReturnType::Ok)
+		{
+			ViewportClient->SetViewportType(LVT_OrthoXY);
+			ViewportClient->SetViewMode(VMI_Unlit);
+		}
+
+		return;
+	}
+
+	const TSharedPtr<SEditorViewport> EditorViewportWidget = ViewportClient->GetEditorViewportWidget();
+	const TSharedPtr<SViewport> SceneViewportWidget = EditorViewportWidget->GetSceneViewport()->GetViewportWidget().Pin();
 
 	const FBox Bounds = GetViewportBounds(SceneViewportWidget);
 	const TArray<uint8> ImageData = GetScreenshotImageData(SceneViewportWidget);
 
 	UploadDataToBackend(World, Bounds, ImageData);
-}
-
-TSharedPtr<SViewport> UCtcAnalyticsEditorSubsystem::GetScreenshotViewport() const
-{
-	FEditorViewportClient* ViewportClient = StaticCast<FEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
-	TSharedPtr<SEditorViewport> EditorViewportWidget = ViewportClient->GetEditorViewportWidget();
-	TWeakPtr<SViewport> SceneViewportWidget = EditorViewportWidget->GetSceneViewport()->GetViewportWidget();
-
-	return SceneViewportWidget.Pin();
 }
 
 FBox UCtcAnalyticsEditorSubsystem::GetViewportBounds(TSharedPtr<SViewport> InViewport) const
