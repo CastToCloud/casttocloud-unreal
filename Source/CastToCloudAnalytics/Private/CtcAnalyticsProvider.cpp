@@ -32,6 +32,15 @@ TAutoConsoleVariable CVarCtcAnalyticsPrintDebugFlags(
 );
 // clang-format on
 
+
+// clang-format off
+TAutoConsoleVariable CVarCtcAnalyticsPrintEventsTimeline(
+	TEXT("CastToCloud.Analytics.PrintEventsTimeline"),
+	false,
+	TEXT("Prints to screen the events recorded by the provider")
+);
+// clang-format on
+
 // TODO: Console command to instantly call flush with both wait & no wait as parameter
 
 namespace
@@ -215,6 +224,18 @@ void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptio
 	{
 		Event.World = *WorldPackage;
 	}
+	
+	if (CVarCtcAnalyticsPrintEventsTimeline.GetValueOnAnyThread())
+	{
+		TArray<FString> AttributesStrings;
+		Algo::Transform(Attributes, AttributesStrings, [](const FAnalyticsEventAttribute& Attribute){ return FString::Printf(TEXT("%s:%s"), *Attribute.GetName(), *Attribute.GetValue());});
+		const FString AttributesAsString = FString::Join(AttributesStrings, TEXT(","));
+		const FString TransformAsString = Event.Transform.IsSet() ? Event.Transform->ToString() : TEXT("-");
+		
+		const FString EventData = FString::Printf(TEXT("%s - [Transform= %s] [Attributes: %s]"), *Event.Name, *TransformAsString, *AttributesAsString);
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, *EventData);
+	}
+
 
 	CachedEvents.Add(Event);
 }
