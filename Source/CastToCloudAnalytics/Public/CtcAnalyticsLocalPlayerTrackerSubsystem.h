@@ -7,6 +7,10 @@
 #include <Subsystems/EngineSubsystem.h>
 #include <Tickable.h>
 
+#if PLATFORM_WINDOWS
+#include "CtcAnalyticsWindowsMessageHandler.h" //NOTE: Full include needed in header so TUniquePtr can access the destructor
+#endif
+
 #include "CtcAnalyticsLocalPlayerTrackerSubsystem.generated.h"
 
 struct FIntervalTracker
@@ -122,7 +126,7 @@ private:
 	void TickMovementTracking(float DeltaTime);
 
 #if PLATFORM_WINDOWS
-	TUniquePtr<class FCtcWindowsMessageHandler> WindowsMessageHandler;
+	TUniquePtr<FCtcWindowsMessageHandler> WindowsMessageHandler;
 #endif
 
 	FIntervalTracker TrackMovementInterval;

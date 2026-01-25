@@ -19,10 +19,6 @@
 #include "CtcHelpers.h"
 #include "CtcSharedSettings.h"
 
-#if PLATFORM_WINDOWS
-#include "CtcAnalyticsWindowsMessageHandler.h"
-#endif
-
 void UCtcAnalyticsLocalPlayerTrackerSubsystem::SetMovementTracking(bool bEnabled)
 {
 	TrackMovementEnabled = bEnabled;

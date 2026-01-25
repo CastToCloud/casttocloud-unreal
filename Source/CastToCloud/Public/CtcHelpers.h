@@ -4,6 +4,8 @@
 
 #include <Misc/Optional.h>
 
+class APlayerController;
+
 namespace CastToCloudHelpers
 {
 	CASTTOCLOUD_API UWorld* GetCurrentWorld();
