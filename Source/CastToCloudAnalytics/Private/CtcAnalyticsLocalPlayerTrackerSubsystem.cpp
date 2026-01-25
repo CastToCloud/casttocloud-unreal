@@ -1,6 +1,6 @@
 // Copyright Cast To Cloud 2024-2026. All Rights Reserved.
 
-#include "CtcAnalyticsAutoTrackerSubsystem.h"
+#include "CtcAnalyticsLocalPlayerTrackerSubsystem.h"
 
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
@@ -8,7 +8,6 @@
 #include <Framework/Application/SlateApplication.h>
 #include <GameFramework/Pawn.h>
 #include <HAL/Platform.h>
-#include <Kismet/GameplayStatics.h>
 #include <Null/NullPlatformApplicationMisc.h>
 
 #if WITH_EDITOR
@@ -20,12 +19,16 @@
 #include "CtcHelpers.h"
 #include "CtcSharedSettings.h"
 
-void UCtcAnalyticsAutoTrackerSubsystem::SetPlayerMovementTracking(bool bEnabled)
+#if PLATFORM_WINDOWS
+#include "CtcAnalyticsWindowsMessageHandler.h"
+#endif
+
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::SetMovementTracking(bool bEnabled)
 {
-	SendPlayerMoveEnabled = bEnabled;
+	TrackMovementEnabled = bEnabled;
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
@@ -33,21 +36,31 @@ void UCtcAnalyticsAutoTrackerSubsystem::Initialize(FSubsystemCollectionBase& Col
 
 	RegisterSessionDelegates();
 
-	FWorldDelegates::OnStartGameInstance.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnStartGameInstance);
+	FWorldDelegates::OnStartGameInstance.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnStartGameInstance);
 
 	// NOTE: There is no FWorldDelegates::BeginPlay so we register for world creation and then bind to the World's BeginPlay delegate.
 	FWorldDelegates::OnPostWorldInitialization.AddLambda(
 		[this](UWorld* World, FWorldInitializationValues WorldInitializationValues)
 		{
-			World->OnWorldBeginPlay.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnWorldBeginPlay, World);
+			World->OnWorldBeginPlay.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWorldBeginPlay, World);
 		}
 	);
 
 	// NOTE: There is no FWorldDelegates::EndPlay, but OnWorldBeginTearDown is called during UWorld::EndPlay.
-	FWorldDelegates::OnWorldBeginTearDown.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnWorldEndPlay);
+	FWorldDelegates::OnWorldBeginTearDown.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWorldEndPlay);
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::Deinitialize()
+bool UCtcAnalyticsLocalPlayerTrackerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
+{
+	if (IsRunningDedicatedServer())
+	{
+		return false;
+	}
+
+	return Super::ShouldCreateSubsystem(Outer);
+}
+
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
 
@@ -56,28 +69,28 @@ void UCtcAnalyticsAutoTrackerSubsystem::Deinitialize()
 	UnregisterSessionDelegates();
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::Tick(float DeltaTime)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::Tick(float DeltaTime)
 {
-	TickPlayerMoveTracking(DeltaTime);
+	TickMovementTracking(DeltaTime);
 }
 
-ETickableTickType UCtcAnalyticsAutoTrackerSubsystem::GetTickableTickType() const
+ETickableTickType UCtcAnalyticsLocalPlayerTrackerSubsystem::GetTickableTickType() const
 {
 	const bool bIsCDO = HasAnyFlags(RF_ClassDefaultObject);
 	return !bIsCDO ? ETickableTickType::Always : ETickableTickType::Never;
 }
 
-TStatId UCtcAnalyticsAutoTrackerSubsystem::GetStatId() const
+TStatId UCtcAnalyticsLocalPlayerTrackerSubsystem::GetStatId() const
 {
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UCtcAnalyticsAutoTrackerSubsystem, STATGROUP_Tickables);
 }
 
-UWorld* UCtcAnalyticsAutoTrackerSubsystem::GetTickableGameObjectWorld() const
+UWorld* UCtcAnalyticsLocalPlayerTrackerSubsystem::GetTickableGameObjectWorld() const
 {
-	return GetWorld();
+	return CastToCloudHelpers::GetCurrentWorld();
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::RegisterApplicationEvents()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::RegisterApplicationEvents()
 {
 	if (!FSlateApplication::IsInitialized())
 	{
@@ -90,7 +103,7 @@ void UCtcAnalyticsAutoTrackerSubsystem::RegisterApplicationEvents()
 
 #if PLATFORM_WINDOWS
 	WindowsMessageHandler = TUniquePtr<FCtcWindowsMessageHandler>(new FCtcWindowsMessageHandler);
-	WindowsMessageHandler->OnAltF4Pressed.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnWindowsAltF4Pressed);
+	WindowsMessageHandler->OnAltF4Pressed.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWindowsAltF4Pressed);
 	const TSharedPtr<GenericApplication> PlatformApplication = FSlateApplication::Get().GetPlatformApplication();
 	if (TSharedPtr<FWindowsApplication> WindowsApplication = StaticCastSharedPtr<FWindowsApplication>(PlatformApplication))
 	{
@@ -99,7 +112,7 @@ void UCtcAnalyticsAutoTrackerSubsystem::RegisterApplicationEvents()
 #endif
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::UnregisterApplicationEvents()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::UnregisterApplicationEvents()
 {
 	if (!FSlateApplication::IsInitialized())
 	{
@@ -120,26 +133,26 @@ void UCtcAnalyticsAutoTrackerSubsystem::UnregisterApplicationEvents()
 #endif
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::RegisterSessionDelegates()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::RegisterSessionDelegates()
 {
 #if WITH_EDITOR
 	if (GIsEditor)
 	{
-		FEditorDelegates::StartPIE.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPIEStarted);
-		FEditorDelegates::ShutdownPIE.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPIEEnded);
+		FEditorDelegates::StartPIE.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPIEStarted);
+		FEditorDelegates::ShutdownPIE.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPIEEnded);
 
 		return;
 	}
 #endif
 
-	FCoreDelegates::OnPostEngineInit.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPostEngineInit);
-	FCoreDelegates::OnEnginePreExit.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnEnginePreExit);
+	FCoreDelegates::OnPostEngineInit.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPostEngineInit);
+	FCoreDelegates::OnEnginePreExit.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnEnginePreExit);
 
-	FCoreDelegates::OnHandleSystemError.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnSystemError);
-	FCoreDelegates::GetApplicationWillTerminateDelegate().AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnApplicationWillTerminate);
+	FCoreDelegates::OnHandleSystemError.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnSystemError);
+	FCoreDelegates::GetApplicationWillTerminateDelegate().AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnApplicationWillTerminate);
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::UnregisterSessionDelegates()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::UnregisterSessionDelegates()
 {
 #if WITH_EDITOR
 	if (GIsEditor)
@@ -159,7 +172,7 @@ void UCtcAnalyticsAutoTrackerSubsystem::UnregisterSessionDelegates()
 }
 
 #if WITH_EDITOR
-void UCtcAnalyticsAutoTrackerSubsystem::OnPIEStarted(bool bIsSimulating)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPIEStarted(bool bIsSimulating)
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	if (!Settings->bAutoStartSession)
@@ -172,10 +185,8 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnPIEStarted(bool bIsSimulating)
 #endif
 
 #if WITH_EDITOR
-void UCtcAnalyticsAutoTrackerSubsystem::OnPIEEnded(bool bIsSimulating)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPIEEnded(bool bIsSimulating)
 {
-	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnPIEEnded called. Ending session and sending cached events."));
-
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	if (!Settings->bAutoStartSession)
 	{
@@ -186,10 +197,8 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnPIEEnded(bool bIsSimulating)
 }
 #endif
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnPostEngineInit()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPostEngineInit()
 {
-	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnPostEngineInit called. Starting session."));
-
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	if (!Settings->bAutoStartSession)
 	{
@@ -199,12 +208,8 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnPostEngineInit()
 	UCtcAnalyticsBPFL::StartSession();
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnEnginePreExit()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnEnginePreExit()
 {
-	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnEnginePreExit called. Ending session and sending cached events."));
-
-	UCtcAnalyticsBPFL::RecordEvent(TEXT("EngineExit"), TArray<FAnalyticsEventAttribute>());
-
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	if (!Settings->bAutoStartSession)
 	{
@@ -214,21 +219,21 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnEnginePreExit()
 	UCtcAnalyticsBPFL::EndSession();
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnSystemError()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnSystemError()
 {
 	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnSystemError called. Sending cached events."));
 
 	UCtcAnalyticsBPFL::RecordPanicEvent(TEXT("SystemError"), TArray<FAnalyticsEventAttribute>());
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnApplicationWillTerminate()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnApplicationWillTerminate()
 {
 	UE_LOG(LogCtcAnalytics, Verbose, TEXT("OnApplicationWillTerminate called. Sending cached events."));
 
 	UCtcAnalyticsBPFL::RecordPanicEvent(TEXT("ApplicationWillTerminate"), TArray<FAnalyticsEventAttribute>());
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnWorldBeginPlay(UWorld* World)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWorldBeginPlay(UWorld* World)
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	if (!Settings->bAutoWorldChangeTracking)
@@ -250,7 +255,7 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnWorldBeginPlay(UWorld* World)
 	UCtcAnalyticsBPFL::RecordEvent(TEXT("WorldStart"), TArray<FAnalyticsEventAttribute>());
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnWorldEndPlay(UWorld* World)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWorldEndPlay(UWorld* World)
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	if (!Settings->bAutoWorldChangeTracking)
@@ -272,44 +277,48 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnWorldEndPlay(UWorld* World)
 	UCtcAnalyticsBPFL::RecordEvent(TEXT("WorldEnd"), TArray<FAnalyticsEventAttribute>());
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnWindowsAltF4Pressed()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWindowsAltF4Pressed()
 {
 	TOptional<FTransform> PlayerTransform = {};
-	if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
+
+	if (const APlayerController* LocalController = CastToCloudHelpers::GetFirstLocalPlayerController())
 	{
-		PlayerTransform = PlayerPawn->GetActorTransform();
-	}
-	else if (const APlayerCameraManager* CameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0))
-	{
-		// Fallback to camera in case the user ALT+F4 while unpossessed (e.g.: while dead)
-		PlayerTransform = FTransform(CameraManager->GetCameraRotation(), CameraManager->GetCameraLocation());
+		if (const APawn* PlayerPawn = LocalController->GetPawn())
+		{
+			PlayerTransform = PlayerPawn->GetActorTransform();
+		}
+		else if (const APlayerCameraManager* CameraManager = LocalController->PlayerCameraManager)
+		{
+			// Fallback to camera in case the user ALT+F4 while unpossessed (e.g.: while dead)
+			PlayerTransform = FTransform(CameraManager->GetCameraRotation(), CameraManager->GetCameraLocation());
+		}
 	}
 
 	UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(TEXT("ALT+F4 Pressed"), PlayerTransform, {});
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnStartGameInstance(UGameInstance* GameInstance)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnStartGameInstance(UGameInstance* GameInstance)
 {
-	GameInstance->OnLocalPlayerAddedEvent.AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnLocalPlayerAdded);
+	GameInstance->OnLocalPlayerAddedEvent.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnLocalPlayerAdded);
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnLocalPlayerAdded(ULocalPlayer* LocalPlayer)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnLocalPlayerAdded(ULocalPlayer* LocalPlayer)
 {
 	if (LocalPlayer)
 	{
-		LocalPlayer->OnPlayerControllerChanged().AddUObject(this, &UCtcAnalyticsAutoTrackerSubsystem::OnLocalPlayerReceivedPlayerController);
+		LocalPlayer->OnPlayerControllerChanged().AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnLocalPlayerReceivedPlayerController);
 	}
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnLocalPlayerReceivedPlayerController(APlayerController* PlayerController)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnLocalPlayerReceivedPlayerController(APlayerController* PlayerController)
 {
 	if (PlayerController)
 	{
-		PlayerController->OnPossessedPawnChanged.AddDynamic(this, &UCtcAnalyticsAutoTrackerSubsystem::OnPossessedPawnChanged);
+		PlayerController->OnPossessedPawnChanged.AddDynamic(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPossessedPawnChanged);
 	}
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
 {
 	const FString EventType = [OldPawn, NewPawn]()
 	{
@@ -335,23 +344,22 @@ void UCtcAnalyticsAutoTrackerSubsystem::OnPossessedPawnChanged(APawn* OldPawn, A
 	UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(EventType, RelevantTransform, {});
 }
 
-void UCtcAnalyticsAutoTrackerSubsystem::TickPlayerMoveTracking(float DeltaTime)
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::TickMovementTracking(float DeltaTime)
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	const bool bShouldTrack = SendPlayerMoveEnabled.IsSet() ? *SendPlayerMoveEnabled : Settings->bAutoPlayerMoveTracking;
+	const bool bShouldTrack = TrackMovementEnabled.IsSet() ? *TrackMovementEnabled : Settings->bAutoPlayerMoveTracking;
 	if (!bShouldTrack)
 	{
 		return;
 	}
 
-	SendPlayerMoveInterval.Tick(DeltaTime);
-	if (!SendPlayerMoveInterval.HasFinished())
+	TrackMovementInterval.Tick(DeltaTime);
+	if (!TrackMovementInterval.HasFinished())
 	{
 		return;
 	}
 
-	const UWorld* World = CastToCloudHelpers::GetCurrentWorld();
-	APlayerController* LocalController = World ? World->GetFirstPlayerController() : nullptr;
+	const APlayerController* LocalController = CastToCloudHelpers::GetFirstLocalPlayerController();
 	if (!LocalController)
 	{
 		return;
@@ -379,5 +387,5 @@ void UCtcAnalyticsAutoTrackerSubsystem::TickPlayerMoveTracking(float DeltaTime)
 		UCtcAnalyticsBPFL::RecordEventWithTransform(TEXT("PlayerMove"), *AutomatedTransform);
 	}
 
-	SendPlayerMoveInterval.Reset(Settings->AutoPlayerMoveTrackingInterval);
+	TrackMovementInterval.Reset(Settings->AutoPlayerMoveTrackingInterval);
 }

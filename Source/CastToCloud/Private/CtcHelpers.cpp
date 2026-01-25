@@ -47,3 +47,21 @@ TOptional<FString> CastToCloudHelpers::GetWorldPackage(const UWorld* World)
 
 	return CleanPackageName;
 }
+
+APlayerController* CastToCloudHelpers::GetFirstLocalPlayerController(const UWorld* World)
+{
+	const UWorld* Target = World ? World : GetCurrentWorld();
+
+	if (!Target)
+	{
+		return nullptr;
+	}
+
+	const ULocalPlayer* LocalPlayer = Target->GetFirstLocalPlayerFromController();
+	if (!LocalPlayer)
+	{
+		return nullptr;
+	}
+
+	return LocalPlayer->PlayerController;
+}

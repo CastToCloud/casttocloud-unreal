@@ -7,9 +7,7 @@
 #include <Subsystems/EngineSubsystem.h>
 #include <Tickable.h>
 
-#include "CtcAnalyticsWindowsMessageHandler.h"
-
-#include "CtcAnalyticsAutoTrackerSubsystem.generated.h"
+#include "CtcAnalyticsLocalPlayerTrackerSubsystem.generated.h"
 
 struct FIntervalTracker
 {
@@ -21,17 +19,18 @@ struct FIntervalTracker
 };
 
 UCLASS()
-class CASTTOCLOUDANALYTICS_API UCtcAnalyticsAutoTrackerSubsystem : public UEngineSubsystem, public FTickableGameObject
+class CASTTOCLOUDANALYTICS_API UCtcAnalyticsLocalPlayerTrackerSubsystem : public UEngineSubsystem, public FTickableGameObject
 {
 	GENERATED_BODY()
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics")
-	void SetPlayerMovementTracking(bool bEnabled);
+	void SetMovementTracking(bool bEnabled);
 
 private:
 	// ~Begin UEngineSubsystem interface
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	virtual void Deinitialize() override;
 	// ~End UEngineSubsystem interface
 
@@ -120,12 +119,12 @@ private:
 	/**
 	 * Called every frame to update the automated player move tracking
 	 */
-	void TickPlayerMoveTracking(float DeltaTime);
+	void TickMovementTracking(float DeltaTime);
 
 #if PLATFORM_WINDOWS
-	TUniquePtr<FCtcWindowsMessageHandler> WindowsMessageHandler;
+	TUniquePtr<class FCtcWindowsMessageHandler> WindowsMessageHandler;
 #endif
 
-	FIntervalTracker SendPlayerMoveInterval;
-	TOptional<bool> SendPlayerMoveEnabled;
+	FIntervalTracker TrackMovementInterval;
+	TOptional<bool> TrackMovementEnabled;
 };
