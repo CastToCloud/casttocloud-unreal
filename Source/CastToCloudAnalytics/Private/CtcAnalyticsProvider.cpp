@@ -116,7 +116,7 @@ void FCtcAnalyticsProvider::EndSession()
 		UE_LOG(LogCtcAnalytics, Warning, TEXT("Session not started or already ended. Ignoring EndSession call."));
 	}
 
-	SendCachedEvents(true);
+	SendCachedEvents();
 
 	Reset();
 }
