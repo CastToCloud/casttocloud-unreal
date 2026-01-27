@@ -6,7 +6,7 @@
 
 class FCtcAnalyticsProvider;
 
-class CASTTOCLOUD_API FCtcAnalyticsModule final : public IAnalyticsProviderModule
+class CASTTOCLOUDANALYTICS_API FCtcAnalyticsModule final : public IAnalyticsProviderModule
 {
 public:
 	static FCtcAnalyticsModule& Get();
