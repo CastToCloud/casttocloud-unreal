@@ -19,6 +19,8 @@
 #include "CtcHelpers.h"
 #include "CtcSharedSettings.h"
 
+extern ENGINE_API float GAverageFPS;
+
 void UCtcAnalyticsLocalPlayerTrackerSubsystem::SetMovementTracking(bool bEnabled)
 {
 	TrackMovementEnabled = bEnabled;
@@ -349,6 +351,8 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::TickMovementTracking(float DeltaT
 		return;
 	}
 
+	FpsTracker.AddEntry(GAverageFPS);
+
 	TrackMovementInterval.Tick(DeltaTime);
 	if (!TrackMovementInterval.HasFinished())
 	{
@@ -380,7 +384,15 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::TickMovementTracking(float DeltaT
 
 	if (AutomatedTransform.IsSet())
 	{
-		UCtcAnalyticsBPFL::RecordEventWithTransform(TEXT("PlayerMove"), *AutomatedTransform);
+		TArray<FAnalyticsEventAttribute> Attributes;
+		if (FpsTracker.HasData())
+		{
+			const double AverageFps = FpsTracker.GetAverage();
+			Attributes.Add(FAnalyticsEventAttribute(TEXT("fps"), FString::Printf(TEXT("%.1f"), AverageFps)));
+			FpsTracker.Reset();
+		}
+
+		UCtcAnalyticsBPFL::RecordEventWithTransform(TEXT("PlayerMove"), *AutomatedTransform, Attributes);
 	}
 
 	TrackMovementInterval.Reset(Settings->AutoPlayerMoveTrackingInterval);

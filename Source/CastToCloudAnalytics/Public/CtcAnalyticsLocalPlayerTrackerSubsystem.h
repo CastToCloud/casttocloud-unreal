@@ -22,6 +22,17 @@ struct FIntervalTracker
 	float TimeLeft = FLT_MIN;
 };
 
+struct FFpsTracker
+{
+	void AddEntry(double Fps) { Total += Fps; Counter++; }
+	void Reset() { Total = 0.0; Counter = 0; }
+	bool HasData() const { return Counter > 0; }
+	double GetAverage() const { return Counter > 0 ? Total / Counter : 0.0; }
+
+	int Counter = 0;
+	double Total = 0.0;
+};
+
 UCLASS()
 class CASTTOCLOUDANALYTICS_API UCtcAnalyticsLocalPlayerTrackerSubsystem : public UEngineSubsystem, public FTickableGameObject
 {
@@ -129,6 +140,7 @@ private:
 	TUniquePtr<FCtcWindowsMessageHandler> WindowsMessageHandler;
 #endif
 
+	FFpsTracker FpsTracker;
 	FIntervalTracker TrackMovementInterval;
 	TOptional<bool> TrackMovementEnabled;
 };
