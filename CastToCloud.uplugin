@@ -19,25 +19,25 @@
 			"Name": "CastToCloud",
 			"Type": "Runtime",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux", "Android", "IOS" ],
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PreDefault"
 		},
 		{
 			"Name": "CastToCloudAnalytics",
 			"Type": "Runtime",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux", "Android", "IOS" ],
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PreDefault"
 		},
 		{
 			"Name": "CastToCloudAnalyticsEditor",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
 			"Type": "Editor",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PreDefault"
 		},
 		{
 			"Name": "CastToCloudEditor",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
 			"Type": "Editor",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PreDefault"
 		}
 	],
 	"Plugins": [
