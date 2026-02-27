@@ -32,4 +32,13 @@ public:
 	static void RecordEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes = TArray<FAnalyticsEventAttribute>());
 
 	static void RecordPanicEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes = TArray<FAnalyticsEventAttribute>());
+
+	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics", meta = (DisplayName = "Set Default Event Attributes", AutoCreateRefTerm = "Attributes"))
+	static void SetDefaultEventAttributes(const TArray<FAnalyticsEventAttr>& Attributes);
+
+	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics", meta = (DisplayName = "Get Default Event Attributes"))
+	static TArray<FAnalyticsEventAttr> GetDefaultEventAttributes();
+
+	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics", meta = (DisplayName = "Append Default Event Attribute", AutoCreateRefTerm = "Attribute"))
+	static void AppendDefaultEventAttribute(const FAnalyticsEventAttr& Attribute);
 };

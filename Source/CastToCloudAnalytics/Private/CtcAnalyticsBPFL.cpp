@@ -18,6 +18,17 @@ namespace
 		}
 		return Converted;
 	}
+	
+	TArray<FAnalyticsEventAttr> ConvertAttrs(const TArray<FAnalyticsEventAttribute>& Attributes)
+	{
+		TArray<FAnalyticsEventAttr> Converted;
+		Converted.Reserve(Attributes.Num());
+		for (const FAnalyticsEventAttribute& Attr : Attributes)
+		{
+			Converted.Emplace(Attr.GetName(), Attr.GetValue());
+		}
+		return Converted;
+	}
 } // namespace
 
 void UCtcAnalyticsBPFL::RecordEventAtLocationBP(const FString& EventName, const FVector& Location, const FQuat& Rotation, const TArray<FAnalyticsEventAttr>& Attributes)
@@ -92,5 +103,33 @@ void UCtcAnalyticsBPFL::RecordPanicEvent(const FString& EventName, const TArray<
 	{
 		CtcProvider->RecordEvent(EventName, Attributes);
 		CtcProvider->FlushEvents(true);
+	}
+}
+
+void UCtcAnalyticsBPFL::SetDefaultEventAttributes(const TArray<FAnalyticsEventAttr>& Attributes)
+{
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
+	{
+		CtcProvider->SetDefaultEventAttributes(ConvertAttrs(Attributes));
+	}
+}
+
+TArray<FAnalyticsEventAttr> UCtcAnalyticsBPFL::GetDefaultEventAttributes()
+{
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
+	{
+		return ConvertAttrs(CtcProvider->GetDefaultEventAttributesSafe());
+	}
+
+	return {};
+}
+
+void UCtcAnalyticsBPFL::AppendDefaultEventAttribute(const FAnalyticsEventAttr& Attribute)
+{
+	if (TSharedPtr<FCtcAnalyticsProvider> CtcProvider = FCtcAnalyticsModule::Get().GetProvider())
+	{
+		TArray<FAnalyticsEventAttribute> DefaultAttributes = CtcProvider->GetDefaultEventAttributesSafe();
+		DefaultAttributes.Append(ConvertAttrs({Attribute}));
+		CtcProvider->SetDefaultEventAttributes(MoveTemp(DefaultAttributes));
 	}
 }
