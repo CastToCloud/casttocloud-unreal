@@ -18,6 +18,10 @@
 #include <RHIStrings.h>
 #include <Runtime/Launch/Resources/Version.h>
 #include <Serialization/JsonSerializer.h>
+#if WITH_EDITOR
+#include <UnrealEdGlobals.h>
+#include <Editor/UnrealEdEngine.h>
+#endif
 
 #include "CtcAnalyticsConsumer.h"
 #include "CtcAnalyticsLog.h"
@@ -64,6 +68,22 @@ namespace
 		// TODO: It would be super interesting if we could get this based on the native OSS ? Maybe not by default but in general a potential idea.
 		return {};
 	}
+
+	bool IsPlaying()
+	{
+#if WITH_EDITOR
+		// For editor builds we consider the user playing if he is in a PIE session
+		FWorldContext* PIEWorldContext = GUnrealEd->GetPIEWorldContext();
+		if(PIEWorldContext && PIEWorldContext->WorldType == EWorldType::PIE)
+		{
+			return true;
+		}
+		return false;
+#else
+		// For non-editor builds we consider the user is always playing
+		return true;
+#endif
+	}
 } // namespace
 
 FCtcAnalyticsProvider::FCtcAnalyticsProvider()
@@ -71,9 +91,6 @@ FCtcAnalyticsProvider::FCtcAnalyticsProvider()
 	Consumers.Add(MakeShared<FCtcAnalyticsApiConsumer>());
 	Consumers.Add(MakeShared<FCtcAnalyticsFileConsumer>());
 	Consumers.Add(MakeShared<FCtcAnalyticsLogConsumer>());
-
-	// TODO: Move everything to the auto tracker subsystem and make it an engine subsystem.
-	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateRaw(this, &FCtcAnalyticsProvider::Tick), 0.0f);
 }
 
 void FCtcAnalyticsProvider::RecordEventWithTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes)
@@ -242,10 +259,19 @@ void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptio
 
 bool FCtcAnalyticsProvider::Tick(float DeltaTime)
 {
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
+	if (!IsPlaying())
+	{
+		return true;
+	}
 
 	const FDateTime Now = FDateTime::UtcNow();
-	const FTimespan TimeSinceLast = Now - LastTickSend;
+	if (!LastTickSend.IsSet())
+	{
+		LastTickSend = Now;
+	}
+	const FTimespan TimeSinceLast = Now - *LastTickSend;
+
+	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	if (TimeSinceLast.GetTotalSeconds() > Settings->SendInterval)
 	{
 		SendCachedEvents();
@@ -273,8 +299,7 @@ void FCtcAnalyticsProvider::SendCachedEvents(bool bWait)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FCtcAnalyticsProvider::SendCachedEvents);
 
-	const FDateTime Now = FDateTime::UtcNow();
-	LastTickSend = Now;
+	LastTickSend = FDateTime::UtcNow();
 
 	if (CachedEvents.IsEmpty())
 	{
@@ -356,6 +381,7 @@ void FCtcAnalyticsProvider::Reset()
 	State = ESessionState::None;
 	UserID.Reset();
 	SessionID.Reset();
+	LastTickSend.Reset();
 }
 
 bool FCtcAnalyticsProvider::IsActiveProvider() const

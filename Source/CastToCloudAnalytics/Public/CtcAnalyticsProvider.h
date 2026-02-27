@@ -4,10 +4,11 @@
 
 #include <Interfaces/IAnalyticsProvider.h>
 #include <Interfaces/IHttpRequest.h>
+#include <Containers/Ticker.h>
 
 struct FCtcAnalyticsConsumer;
 
-class CASTTOCLOUDANALYTICS_API FCtcAnalyticsProvider : public IAnalyticsProvider
+class CASTTOCLOUDANALYTICS_API FCtcAnalyticsProvider : public IAnalyticsProvider, public FTSTickerObjectBase
 {
 public:
 	FCtcAnalyticsProvider();
@@ -27,6 +28,10 @@ public:
 	virtual void RecordEvent(const FString& EventName, const TArray<FAnalyticsEventAttribute>& Attributes) override;
 	// ~End IAnalyticsProvider interface
 
+	// ~Begin FTSTickerObjectBase interface
+	virtual bool Tick(float DeltaTime) override;
+	// ~End FTSTickerObjectBase interface
+
 	void RecordEventWithTransform(const FString& EventName, const FTransform& Transform, const TArray<FAnalyticsEventAttribute>& Attributes);
 
 	void FlushEvents(bool bBlocking);
@@ -40,10 +45,6 @@ private:
 	 * Updates the built-in attributes applied to all events
 	 */
 	void RefreshBuiltInAttributes();
-	/**
-	 * Callback executed at a fixed interval to regularly send our cached events
-	 */
-	bool Tick(float DeltaTime);
 	/**
 	 * Send all the events currently in our cache clearing it
 	 * @parm bWait If true, waits for the request to complete before returning
@@ -96,7 +97,7 @@ private:
 	/*
 	 * Last UTC timestamp of the last sent of the cached events
 	 */
-	FDateTime LastTickSend;
+	TOptional<FDateTime> LastTickSend;
 
 	/**
 	 * Current state of the session
