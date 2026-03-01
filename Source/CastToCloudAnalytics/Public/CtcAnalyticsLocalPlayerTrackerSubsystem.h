@@ -42,7 +42,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics")
 	void SetMovementTracking(bool bEnabled);
 
-private:
+protected:
 	// ~Begin UEngineSubsystem interface
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
@@ -57,6 +57,14 @@ private:
 	// ~FTickableGameObject interface
 
 	/**
+	 * Registers delegates we should use to start & end the session
+	 */
+	virtual void RegisterSessionDelegates();
+	/**
+	 * Registers delegates we should use to start & end the session
+	 */
+	virtual void UnregisterSessionDelegates();
+	/**
 	 * Registers the more complex application delegates when possible
 	 */
 	void RegisterApplicationEvents();
@@ -65,35 +73,13 @@ private:
 	 */
 	void UnregisterApplicationEvents();
 	/**
-	 * Registers delegates we should use to start & end the session
+	 * Callback executed when the session has started
 	 */
-	void RegisterSessionDelegates();
+	void OnSessionStart();
 	/**
-	 * Registers delegates we should use to start & end the session
+	 * Callback executed when the session has ended
 	 */
-	void UnregisterSessionDelegates();
-
-#if WITH_EDITOR
-	/**
-	 * Callback executed when the Play In Editor (PIE) session starts
-	 */
-	void OnPIEStarted(bool bIsSimulating);
-#endif
-
-#if WITH_EDITOR
-	/**
-	 * Callback executed when the Play In Editor (PIE) session ends
-	 */
-	void OnPIEEnded(bool bIsSimulating);
-#endif
-	/**
-	 * Callback executed when the engine has started
-	 */
-	void OnPostEngineInit();
-	/**
-	 * Callback executed when the engine is about to exit
-	 */
-	void OnEnginePreExit();
+	void OnSessionEnd();
 	/**
 	 * Callback executed when the system encounters an error (e.g.: a crash)
 	 */

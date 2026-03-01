@@ -9,10 +9,7 @@
 #include <GameFramework/Pawn.h>
 #include <HAL/Platform.h>
 #include <Null/NullPlatformApplicationMisc.h>
-
-#if WITH_EDITOR
-#include <Editor.h>
-#endif
+#include <UObject/UObjectHash.h>
 
 #include "CtcAnalyticsBPFL.h"
 #include "CtcAnalyticsLog.h"
@@ -46,11 +43,21 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::Initialize(FSubsystemCollectionBa
 
 	// NOTE: There is no FWorldDelegates::EndPlay, but OnWorldBeginTearDown is called during UWorld::EndPlay.
 	FWorldDelegates::OnWorldBeginTearDown.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWorldEndPlay);
+
+	FCoreDelegates::OnHandleSystemError.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnSystemError);
+	FCoreDelegates::GetApplicationWillTerminateDelegate().AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnApplicationWillTerminate);
 }
 
 bool UCtcAnalyticsLocalPlayerTrackerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
 	if (IsRunningDedicatedServer())
+	{
+		return false;
+	}
+
+	TArray<UClass*> ChildClasses;
+	GetDerivedClasses(GetClass(), ChildClasses, false);
+	if (ChildClasses.Num() > 0)
 	{
 		return false;
 	}
@@ -86,6 +93,18 @@ TStatId UCtcAnalyticsLocalPlayerTrackerSubsystem::GetStatId() const
 UWorld* UCtcAnalyticsLocalPlayerTrackerSubsystem::GetTickableGameObjectWorld() const
 {
 	return CastToCloudHelpers::GetCurrentWorld();
+}
+
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::RegisterSessionDelegates()
+{
+	FCoreDelegates::OnPostEngineInit.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnSessionStart);
+	FCoreDelegates::OnEnginePreExit.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnSessionEnd);
+}
+
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::UnregisterSessionDelegates()
+{
+	FCoreDelegates::OnPostEngineInit.RemoveAll(this);
+	FCoreDelegates::OnEnginePreExit.RemoveAll(this);
 }
 
 void UCtcAnalyticsLocalPlayerTrackerSubsystem::RegisterApplicationEvents()
@@ -131,71 +150,7 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::UnregisterApplicationEvents()
 #endif
 }
 
-void UCtcAnalyticsLocalPlayerTrackerSubsystem::RegisterSessionDelegates()
-{
-#if WITH_EDITOR
-	if (GIsEditor)
-	{
-		FEditorDelegates::StartPIE.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPIEStarted);
-		FEditorDelegates::ShutdownPIE.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPIEEnded);
-
-		return;
-	}
-#endif
-
-	FCoreDelegates::OnPostEngineInit.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPostEngineInit);
-	FCoreDelegates::OnEnginePreExit.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnEnginePreExit);
-
-	FCoreDelegates::OnHandleSystemError.AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnSystemError);
-	FCoreDelegates::GetApplicationWillTerminateDelegate().AddUObject(this, &UCtcAnalyticsLocalPlayerTrackerSubsystem::OnApplicationWillTerminate);
-}
-
-void UCtcAnalyticsLocalPlayerTrackerSubsystem::UnregisterSessionDelegates()
-{
-#if WITH_EDITOR
-	if (GIsEditor)
-	{
-		FEditorDelegates::StartPIE.RemoveAll(this);
-		FEditorDelegates::ShutdownPIE.RemoveAll(this);
-
-		return;
-	}
-#endif
-
-	FCoreDelegates::OnPostEngineInit.RemoveAll(this);
-	FCoreDelegates::OnEnginePreExit.RemoveAll(this);
-
-	FCoreDelegates::OnHandleSystemError.RemoveAll(this);
-	FCoreDelegates::GetApplicationWillTerminateDelegate().RemoveAll(this);
-}
-
-#if WITH_EDITOR
-void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPIEStarted(bool bIsSimulating)
-{
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (!Settings->bAutoStartSession)
-	{
-		return;
-	}
-
-	UCtcAnalyticsBPFL::StartSession();
-}
-#endif
-
-#if WITH_EDITOR
-void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPIEEnded(bool bIsSimulating)
-{
-	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	if (!Settings->bAutoStartSession)
-	{
-		return;
-	}
-
-	UCtcAnalyticsBPFL::EndSession();
-}
-#endif
-
-void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPostEngineInit()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnSessionStart()
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	if (!Settings->bAutoStartSession)
@@ -206,7 +161,7 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnPostEngineInit()
 	UCtcAnalyticsBPFL::StartSession();
 }
 
-void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnEnginePreExit()
+void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnSessionEnd()
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	if (!Settings->bAutoStartSession)
