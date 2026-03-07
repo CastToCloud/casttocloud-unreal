@@ -16,7 +16,7 @@ namespace
 		MutableDesc->TailSizeBytes = TailSizeBytes;
 	}
 
-	void StartTraceToMemory(const FString& Channels)
+	void StartTraceToMemory(FString Channels)
 	{
 		FTraceAuxiliary::FOptions Options;
 		FTraceAuxiliary::Start(FTraceAuxiliary::EConnectionType::None, nullptr, *Channels, &Options, LogTemp);
