@@ -314,7 +314,7 @@ void FCtcAnalyticsProvider::SendCachedEvents(bool bWait)
 
 	if (!SessionID.IsSet())
 	{
-		SetSessionID(FGuid::NewGuid().ToString());
+		SetSessionID(FApp::GetSessionId().ToString());
 	}
 
 	UE_LOG(LogCtcAnalytics, Verbose, TEXT("Sending %s cached events"), *LexToString(CachedEvents.Num()));
