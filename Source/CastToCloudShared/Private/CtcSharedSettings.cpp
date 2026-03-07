@@ -4,6 +4,7 @@
 
 #include <HAL/FileManager.h>
 #include <Misc/ConfigContext.h>
+#include <Misc/CommandLine.h>
 #include <Misc/MessageDialog.h>
 #include <Modules/ModuleManager.h>
 
@@ -101,6 +102,16 @@ void UCtcSharedSettings::PostInitProperties()
 		SettingsContainer->SetCategorySortPriority(TEXT("Project"), -0.7f);
 		SettingsContainer->SetCategorySortPriority(TEXT("Game"), -0.6f);
 		SettingsContainer->SetCategorySortPriority(GetCategoryName(), -0.5f);
+	}
+
+	if (FParse::Value(FCommandLine::Get(), TEXT("-tracetailmb="), EditorTailSizeBytes))
+	{
+		EditorTailSizeBytes <<= 20;
+	}
+	else
+	{
+		// Same default as FTraceAuxiliary::Initialize
+		EditorTailSizeBytes = 32 << 20;
 	}
 #endif
 }

@@ -34,6 +34,12 @@
 			"LoadingPhase": "PreDefault"
 		},
 		{
+			"Name": "CastToCloudMetrics",
+			"Type": "Runtime",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux", "Android", "IOS" ],
+			"LoadingPhase": "PreDefault"
+		},
+		{
 			"Name": "CastToCloudAnalyticsEditor",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
 			"Type": "Editor",
