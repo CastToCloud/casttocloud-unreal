@@ -9,7 +9,7 @@
 #include "CtcPerformanceMonitoringSubsystem.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class CASTTOCLOUD_API UCtcPerformanceMonitoringSubsystem : public UGameInstanceSubsystem, public FTickableGameObject

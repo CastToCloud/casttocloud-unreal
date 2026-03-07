@@ -3,14 +3,14 @@
 #include "CtcAnalyticsEditorModule.h"
 
 #include <Editor.h>
-#include <ToolMenus.h>
-#include <WorkspaceMenuStructure.h>
-#include <WorkspaceMenuStructureModule.h>
 #include <Framework/Docking/TabManager.h>
 #include <Framework/MultiBox/MultiBoxBuilder.h>
-#include <Widgets/SWidget.h>
-#include <Widgets/Docking/SDockTab.h>
 #include <PropertyEditorModule.h>
+#include <ToolMenus.h>
+#include <Widgets/Docking/SDockTab.h>
+#include <Widgets/SWidget.h>
+#include <WorkspaceMenuStructure.h>
+#include <WorkspaceMenuStructureModule.h>
 
 #include "SCtcAnalyticsEditorViewer.h"
 
@@ -103,8 +103,8 @@ TSharedRef<SWidget> FCtcAnalyticsEditorModule::GenerateToolbarMenuContent()
 	OnBuildGameplayEventsMenu.Broadcast(MenuBuilder);
 	MenuBuilder.EndSection();
 
-	//TODO: Checkbox if we should warn about configuration issues
-	//TODO: Add warning state button - provider not configured, missing API Keys, current configuration doesn't allow sending events
+	// TODO: Checkbox if we should warn about configuration issues
+	// TODO: Add warning state button - provider not configured, missing API Keys, current configuration doesn't allow sending events
 
 	return MenuBuilder.MakeWidget();
 }

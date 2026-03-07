@@ -89,19 +89,19 @@ public:
 	 * Tail buffer size used in Editor builds (Unreal Insights default).
 	 * Not configurable via the plugin, but can be overridden at launch with `-tracetailmb=`.
 	 */
-	UPROPERTY(VisibleAnywhere, Category = "Monitoring|PerformanceTracking", meta = (Units="Bytes"))
+	UPROPERTY(VisibleAnywhere, Category = "Monitoring|PerformanceTracking", meta = (Units = "Bytes"))
 	uint32 EditorTailSizeBytes = 0;
 	/*
 	 * Tail buffer size used in packaged games.
 	 * Larger values retain more trace history but increase memory usage and output file size.
 	 */
-	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (Units="Bytes", CopyToPreInitIni))
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (Units = "Bytes", CopyToPreInitIni))
 	uint32 GameTailSizeBytes = 4 << 20;
 	/*
 	 * Trace channels used by the in-memory trace
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (CopyToPreInitIni))
-	FString TraceChannels = TEXT("cpu,gpu,frame,log,bookmark,screenshot,region"); 	//TODO: make this bitmap thingy with all possible values
+	FString TraceChannels = TEXT("cpu,gpu,frame,log,bookmark,screenshot,region"); // TODO: make this bitmap thingy with all possible values
 	/*
 	 * Number of recent frames kept for FPS averaging
 	 * The average FPS will not be evaluated until at least this many frames have been collected.

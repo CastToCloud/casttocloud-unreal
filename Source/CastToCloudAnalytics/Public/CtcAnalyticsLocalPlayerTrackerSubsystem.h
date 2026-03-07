@@ -24,8 +24,16 @@ struct FIntervalTracker
 
 struct FFpsTracker
 {
-	void AddEntry(double Fps) { Total += Fps; Counter++; }
-	void Reset() { Total = 0.0; Counter = 0; }
+	void AddEntry(double Fps)
+	{
+		Total += Fps;
+		Counter++;
+	}
+	void Reset()
+	{
+		Total = 0.0;
+		Counter = 0;
+	}
 	bool HasData() const { return Counter > 0; }
 	double GetAverage() const { return Counter > 0 ? Total / Counter : 0.0; }
 

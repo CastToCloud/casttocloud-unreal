@@ -3,8 +3,8 @@
 #include "CtcSharedSettings.h"
 
 #include <HAL/FileManager.h>
-#include <Misc/ConfigContext.h>
 #include <Misc/CommandLine.h>
+#include <Misc/ConfigContext.h>
 #include <Misc/MessageDialog.h>
 #include <Modules/ModuleManager.h>
 

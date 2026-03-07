@@ -85,11 +85,13 @@ namespace
 
 		UE_LOG(LogCtcMetrics, Display, TEXT("[%s] Uploading trace file bytes."), *TraceId);
 
-		FileUploadRequest->OnRequestProgress64().BindLambda([TraceId, TotalBytes](FHttpRequestPtr Request, uint64 BytesSent, uint64 BytesReceived)
-		{
-			const double PercentComplete = TotalBytes > 0 ? static_cast<double>(BytesSent) * 100.0 / static_cast<double>(TotalBytes) : 0.0;
-			UE_LOG(LogCtcMetrics, Display, TEXT("[%s] Upload progress. Percent=%s BytesSent=%s BytesReceived=%s TotalBytes=%s"), *TraceId, *LexToString(PercentComplete), *LexToString(BytesSent), *LexToString(BytesReceived), *LexToString(TotalBytes));
-		});
+		FileUploadRequest->OnRequestProgress64().BindLambda(
+			[TraceId, TotalBytes](FHttpRequestPtr Request, uint64 BytesSent, uint64 BytesReceived)
+			{
+				const double PercentComplete = TotalBytes > 0 ? static_cast<double>(BytesSent) * 100.0 / static_cast<double>(TotalBytes) : 0.0;
+				UE_LOG(LogCtcMetrics, Display, TEXT("[%s] Upload progress. Percent=%s BytesSent=%s BytesReceived=%s TotalBytes=%s"), *TraceId, *LexToString(PercentComplete), *LexToString(BytesSent), *LexToString(BytesReceived), *LexToString(TotalBytes));
+			}
+		);
 
 		FileUploadRequest->ProcessRequestUntilComplete();
 
@@ -126,9 +128,11 @@ void CastToCloudMetricsTraceHelpers::WriteAndUploadTrace(const FString& TraceId)
 
 	UE_LOG(LogCtcMetrics, Display, TEXT("[%s] Trace snapshot created at %s. Uploading in the background."), *TraceId, *TraceFile);
 
-	AsyncTask(ENamedThreads::AnyBackgroundHiPriTask, [TraceId, TraceFile]()
-	{
-		UploadTraceBlocking(TraceId, TraceFile);
-	});
+	AsyncTask(
+		ENamedThreads::AnyBackgroundHiPriTask,
+		[TraceId, TraceFile]()
+		{
+			UploadTraceBlocking(TraceId, TraceFile);
+		}
+	);
 }
-

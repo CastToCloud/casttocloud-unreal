@@ -72,7 +72,7 @@ APlayerController* CastToCloudSharedHelpers::GetFirstLocalPlayerController(const
 
 TValueOrError<FConfigFile, FString> CastToCloudSharedHelpers::GetPreInitConfig()
 {
-	//NOTE: This is basically an inline re-implementation of FTempCommandLineScope
+	// NOTE: This is basically an inline re-implementation of FTempCommandLineScope
 	const bool bWasCommandLineInitialized = FCommandLine::IsInitialized();
 	if (!bWasCommandLineInitialized)
 	{

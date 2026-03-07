@@ -3,14 +3,14 @@
 #include "CtcPerformanceMonitoringSubsystem.h"
 
 #include <Algo/Accumulate.h>
+#include <Camera/PlayerCameraManager.h>
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>
-#include <HAL/IConsoleManager.h>
-#include <Misc/CommandLine.h>
-#include <Misc/App.h>
-#include <Camera/PlayerCameraManager.h>
 #include <GameFramework/Pawn.h>
 #include <GameFramework/PlayerController.h>
+#include <HAL/IConsoleManager.h>
+#include <Misc/App.h>
+#include <Misc/CommandLine.h>
 
 #include "CtcAnalyticsBPFL.h"
 #include "CtcMetricsLog.h"
@@ -45,7 +45,7 @@ bool UCtcPerformanceMonitoringSubsystem::ShouldCreateSubsystem(UObject* Outer) c
 		return true;
 	}
 
-	//TODO: We should move this to tick and also take other things into account, e.g.: CPU throttling, or not in focus
+	// TODO: We should move this to tick and also take other things into account, e.g.: CPU throttling, or not in focus
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	return Settings && Settings->TrackingEnabled.IsCurrentConfigurationAllowed();
 }
@@ -133,6 +133,6 @@ void UCtcPerformanceMonitoringSubsystem::OnAnomalyDetected()
 
 	TArray<FAnalyticsEventAttribute> Attributes;
 	Attributes.Emplace(TEXT("trace_id"), TraceId);
-	//TODO the event above should also contain the upscaling applied if any or "native"
+	// TODO the event above should also contain the upscaling applied if any or "native"
 	UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(TEXT("Trace"), PlayerTransform, Attributes);
 }

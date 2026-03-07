@@ -18,7 +18,7 @@ namespace
 		}
 		return Converted;
 	}
-	
+
 	TArray<FAnalyticsEventAttr> ConvertAttrs(const TArray<FAnalyticsEventAttribute>& Attributes)
 	{
 		TArray<FAnalyticsEventAttr> Converted;

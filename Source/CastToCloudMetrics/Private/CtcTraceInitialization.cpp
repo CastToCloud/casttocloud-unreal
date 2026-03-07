@@ -21,9 +21,10 @@ namespace
 		FTraceAuxiliary::FOptions Options;
 		FTraceAuxiliary::Start(FTraceAuxiliary::EConnectionType::None, nullptr, *Channels, &Options, LogTemp);
 	}
-}
+} // namespace
 
-static FDelayedAutoRegisterHelper MonitoringEnginePreInit(EDelayedRegisterRunPhase::StartOfEnginePreInit,
+static FDelayedAutoRegisterHelper MonitoringEnginePreInit(
+	EDelayedRegisterRunPhase::StartOfEnginePreInit,
 	[]
 	{
 		auto IniConfig = CastToCloudSharedHelpers::GetPreInitConfig();
@@ -41,10 +42,10 @@ static FDelayedAutoRegisterHelper MonitoringEnginePreInit(EDelayedRegisterRunPha
 		const bool bHasChannels = Ini.GetString(TEXT("/Script/CastToCloudShared.CtcSharedSettings"), TEXT("TraceChannels"), TraceChannels) && !TraceChannels.IsEmpty();
 
 #if !WITH_EDITOR
-		//NOTES:
-		// 1. The Tail Size needs to be adjusted before FTraceAuxiliary::Initialize, so EDelayedRegisterRunPhase::StartOfEnginePreInit is the only delegate we can use
-		// 2. After FTraceAuxiliary::Initialize, FTraceAuxiliary::TryAutoConnect will be tried, so we need to keep in mind Unreal Insights might connect here
-		// 3. The next available delegate for us is FCoreDelegates::OnOutputDevicesInit (even if the name is not ideal), so we are going to use it to start our trace
+		// NOTES:
+		//  1. The Tail Size needs to be adjusted before FTraceAuxiliary::Initialize, so EDelayedRegisterRunPhase::StartOfEnginePreInit is the only delegate we can use
+		//  2. After FTraceAuxiliary::Initialize, FTraceAuxiliary::TryAutoConnect will be tried, so we need to keep in mind Unreal Insights might connect here
+		//  3. The next available delegate for us is FCoreDelegates::OnOutputDevicesInit (even if the name is not ideal), so we are going to use it to start our trace
 		if (bHasTailSize)
 		{
 			AdjustTraceTailSizeBytes(TailSizeBytes);
@@ -54,11 +55,12 @@ static FDelayedAutoRegisterHelper MonitoringEnginePreInit(EDelayedRegisterRunPha
 			FCoreDelegates::OnOutputDevicesInit.AddStatic(&StartTraceToMemory, TraceChannels);
 		}
 #else
-		//NOTES: 
-		// For editor builds the plugin dll is loaded too late, and we cannot modify the TailSize. So we just start the trace to memory
+		// NOTES:
+		//  For editor builds the plugin dll is loaded too late, and we cannot modify the TailSize. So we just start the trace to memory
 		if (bHasChannels)
 		{
 			StartTraceToMemory(TraceChannels);
 		}
 #endif
-	});
+	}
+);

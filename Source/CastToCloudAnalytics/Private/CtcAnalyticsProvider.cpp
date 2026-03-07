@@ -19,8 +19,8 @@
 #include <Runtime/Launch/Resources/Version.h>
 #include <Serialization/JsonSerializer.h>
 #if WITH_EDITOR
-#include <UnrealEdGlobals.h>
 #include <Editor/UnrealEdEngine.h>
+#include <UnrealEdGlobals.h>
 #endif
 
 #include "CtcAnalyticsConsumer.h"
@@ -74,7 +74,7 @@ namespace
 #if WITH_EDITOR
 		// For editor builds we consider the user playing if he is in a PIE session
 		FWorldContext* PIEWorldContext = GUnrealEd->GetPIEWorldContext();
-		if(PIEWorldContext && PIEWorldContext->WorldType == EWorldType::PIE)
+		if (PIEWorldContext && PIEWorldContext->WorldType == EWorldType::PIE)
 		{
 			return true;
 		}
@@ -241,14 +241,21 @@ void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptio
 	{
 		Event.World = *WorldPackage;
 	}
-	
+
 	if (CVarCtcAnalyticsPrintEventsTimeline.GetValueOnAnyThread())
 	{
 		TArray<FString> AttributesStrings;
-		Algo::Transform(Attributes, AttributesStrings, [](const FAnalyticsEventAttribute& Attribute){ return FString::Printf(TEXT("%s:%s"), *Attribute.GetName(), *Attribute.GetValue());});
+		Algo::Transform(
+			Attributes,
+			AttributesStrings,
+			[](const FAnalyticsEventAttribute& Attribute)
+			{
+				return FString::Printf(TEXT("%s:%s"), *Attribute.GetName(), *Attribute.GetValue());
+			}
+		);
 		const FString AttributesAsString = FString::Join(AttributesStrings, TEXT(","));
 		const FString TransformAsString = Event.Transform.IsSet() ? Event.Transform->ToString() : TEXT("-");
-		
+
 		const FString EventData = FString::Printf(TEXT("%s - [Transform= %s] [Attributes: %s]"), *Event.Name, *TransformAsString, *AttributesAsString);
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, *EventData);
 	}

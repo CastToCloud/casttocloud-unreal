@@ -2,12 +2,12 @@
 
 #include "CtcSharedEditorModule.h"
 
-#include <Misc/ConfigCacheIni.h>
 #include <Editor.h>
 #include <HttpRequestHandler.h>
 #include <HttpServerModule.h>
 #include <IHttpRouter.h>
 #include <Interfaces/IPluginManager.h>
+#include <Misc/ConfigCacheIni.h>
 #include <PropertyEditorModule.h>
 #include <Settings/ProjectPackagingSettings.h>
 #include <ToolMenus.h>
@@ -15,9 +15,9 @@
 #include "CtcSharedApiKeyCustomization.h"
 #include "CtcSharedConfigurationSettings.h"
 #include "CtcSharedConfigurationSettingsCustomization.h"
+#include "CtcSharedLog.h"
 #include "CtcSharedPathReference.h"
 #include "CtcSharedPathReferenceCustomization.h"
-#include "CtcSharedLog.h"
 #include "CtcSharedSettings.h"
 #include "CtcSharedSettingsDetailsCustomization.h"
 
@@ -89,7 +89,7 @@ void FCtcSharedEditorModule::GeneratePreInitConfig()
 
 	for (FProperty* Property = SharedSettings->GetClass()->PropertyLink; Property; Property = Property->PropertyLinkNext)
 	{
-		if(Property->HasMetaData("CopyToPreInitIni"))
+		if (Property->HasMetaData("CopyToPreInitIni"))
 		{
 			Context.PropertyNames.Add(Property->GetFName());
 		}

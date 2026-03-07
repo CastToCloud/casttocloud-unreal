@@ -3,25 +3,25 @@
 #include "CtcAnalyticsBackgroundSubsystem.h"
 
 #include <AutomationBlueprintFunctionLibrary.h>
-#include <EditorModeManager.h>
-#include <HttpModule.h>
-#include <IImageWrapper.h>
-#include <IImageWrapperModule.h>
-#include <ISinglePropertyView.h>
-#include <LevelEditorSubsystem.h>
-#include <SEditorViewport.h>
-#include <SceneView.h>
 #include <Dom/JsonObject.h>
+#include <EditorModeManager.h>
 #include <Engine/WorldInitializationValues.h>
 #include <Framework/Application/SlateApplication.h>
 #include <Framework/MultiBox/MultiBoxBuilder.h>
 #include <Framework/Notifications/NotificationManager.h>
+#include <HttpModule.h>
+#include <IImageWrapper.h>
+#include <IImageWrapperModule.h>
+#include <ISinglePropertyView.h>
 #include <Interfaces/IHttpRequest.h>
 #include <Interfaces/IHttpResponse.h>
+#include <LevelEditorSubsystem.h>
 #include <Misc/Base64.h>
 #include <Misc/MessageDialog.h>
 #include <Modules/ModuleManager.h>
 #include <Runtime/Launch/Resources/Version.h>
+#include <SEditorViewport.h>
+#include <SceneView.h>
 #include <Serialization/JsonSerializer.h>
 #include <Serialization/JsonWriter.h>
 #include <Slate/SceneViewport.h>
@@ -235,7 +235,7 @@ TArray<uint8> UCtcAnalyticsBackgroundSubsystem::GetScreenshotImageData(TSharedPt
 		GEditor->UpdateSingleViewportClient(Viewport, true, false);
 	}
 
-	//TODO: It would be nice to give the user a selection tool so they can have a section of the viewport if they want.
+	// TODO: It would be nice to give the user a selection tool so they can have a section of the viewport if they want.
 	TArray<FColor> ColorData;
 	FIntVector Size;
 	FSlateApplication::Get().TakeScreenshot(InViewport.ToSharedRef(), ColorData, Size);

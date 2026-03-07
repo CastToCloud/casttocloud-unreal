@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include <Containers/Ticker.h>
 #include <Interfaces/IAnalyticsProvider.h>
 #include <Interfaces/IHttpRequest.h>
-#include <Containers/Ticker.h>
 
 struct FCtcAnalyticsConsumer;
 
