@@ -50,6 +50,12 @@
 			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
 			"Type": "Editor",
 			"LoadingPhase": "PreDefault"
+		},
+		{
+			"Name": "CastToCloudMetricsEditor",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
+			"Type": "Editor",
+			"LoadingPhase": "PreDefault"
 		}
 	],
 	"Plugins": [
