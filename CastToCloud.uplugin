@@ -16,6 +16,12 @@
 	"EnabledByDefault": true,
 	"Modules": [
 		{
+			"Name": "CastToCloud",
+			"Type": "Runtime",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux", "Android", "IOS" ],
+			"LoadingPhase": "PreDefault"
+		},
+		{
 			"Name": "CastToCloudShared",
 			"Type": "Runtime",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux", "Android", "IOS" ],
