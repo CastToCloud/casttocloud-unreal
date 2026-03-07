@@ -3,6 +3,7 @@
 #include "CtcSharedHelpers.h"
 
 #include <Engine/GameEngine.h>
+#include <Engine/LocalPlayer.h>
 #include <HAL/FileManager.h>
 #include <Misc/CommandLine.h>
 #include <Misc/ConfigCacheIni.h>
