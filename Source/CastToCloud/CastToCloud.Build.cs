@@ -29,5 +29,7 @@ public class CastToCloud : ModuleRules
 				}
 			);
 		}
+
+		RuntimeDependencies.Add("$(ProjectDir)/Intermediate/CastToCloud/PreInitCastToCloud.ini", StagedFileType.NonUFS);
 	}
 }

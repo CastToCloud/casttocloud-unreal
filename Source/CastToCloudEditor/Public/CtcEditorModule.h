@@ -6,7 +6,7 @@
 #include <HttpServerRequest.h>
 #include <Modules/ModuleManager.h>
 
-class FCtcEditorModule : public IModuleInterface
+class CASTTOCLOUDEDITOR_API FCtcEditorModule : public IModuleInterface
 {
 public:
 	using FOnHttpRequestReceived = TDelegate<TUniquePtr<FHttpServerResponse>(const FHttpServerRequest& Request)>;
@@ -17,6 +17,7 @@ private:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 
+	void GeneratePreInitConfig();
 	void RemovePublicKeyFromPackage();
 
 	void StartHttpServer();

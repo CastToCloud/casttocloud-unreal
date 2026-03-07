@@ -2,6 +2,7 @@
 
 #include "CtcEditorModule.h"
 
+#include <Misc/ConfigCacheIni.h>
 #include <Editor.h>
 #include <HttpRequestHandler.h>
 #include <HttpServerModule.h>
@@ -41,6 +42,8 @@ void FCtcEditorModule::StartupModule()
 	PropertyModule.RegisterCustomPropertyTypeLayout(FCtcApiKey::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FCtcApiKeyCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout(UCtcSharedSettings::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FCtcSharedSettingsDetailsCustomization::MakeInstance));
 
+	GeneratePreInitConfig();
+
 	RemovePublicKeyFromPackage();
 
 	if (!IsRunningCookCommandlet())
@@ -63,6 +66,36 @@ void FCtcEditorModule::ShutdownModule()
 	{
 		StopHttpServer();
 	}
+}
+
+void FCtcEditorModule::GeneratePreInitConfig()
+{
+	if (!IsRunningCookCommandlet())
+	{
+		UE_LOG(LogCtcShared, Verbose, TEXT("Editor instance is not cooking, no need to generate PreInit configs."));
+		return;
+	}
+
+	FString ConfigForPreInit = FPaths::ProjectIntermediateDir() / TEXT("CastToCloud") / TEXT("PreInitCastToCloud.ini");
+	UE_LOG(LogCtcShared, Display, TEXT("Editor instance is cooking, generating PreInit configs at %s."), *ConfigForPreInit);
+
+	UCtcSharedSettings* SharedSettings = GetMutableDefault<UCtcSharedSettings>();
+
+	FConfigCacheIni TempConfig(EConfigCacheType::DiskBacked);
+	UObject::FSaveConfigContext Context;
+	Context.Filename = ConfigForPreInit;
+	Context.ConfigSystem = &TempConfig;
+	Context.bAllowCopyToDefaultObject = false;
+
+	for (FProperty* Property = SharedSettings->GetClass()->PropertyLink; Property; Property = Property->PropertyLinkNext)
+	{
+		if(Property->HasMetaData("CopyToPreInitIni"))
+		{
+			Context.PropertyNames.Add(Property->GetFName());
+		}
+	}
+
+	SharedSettings->SaveConfig(Context);
 }
 
 void FCtcEditorModule::RemovePublicKeyFromPackage()

@@ -3,6 +3,10 @@
 #include "CtcHelpers.h"
 
 #include <Engine/GameEngine.h>
+#include <HAL/FileManager.h>
+#include <Misc/CommandLine.h>
+#include <Misc/ConfigCacheIni.h>
+#include <Misc/ConfigContext.h>
 #include <UObject/Package.h>
 
 #if WITH_EDITOR
@@ -64,4 +68,34 @@ APlayerController* CastToCloudHelpers::GetFirstLocalPlayerController(const UWorl
 	}
 
 	return LocalPlayer->PlayerController;
+}
+
+TValueOrError<FConfigFile, FString> CastToCloudHelpers::GetPreInitConfig()
+{
+	//NOTE: This is basically an inline re-implementation of FTempCommandLineScope
+	const bool bWasCommandLineInitialized = FCommandLine::IsInitialized();
+	if (!bWasCommandLineInitialized)
+	{
+		FCommandLine::Set(TEXT(""));
+	}
+
+	ON_SCOPE_EXIT
+	{
+		if (!bWasCommandLineInitialized)
+		{
+			FCommandLine::Reset();
+		}
+	};
+
+	const FString PreInitIni = FPaths::ProjectIntermediateDir() / TEXT("CastToCloud") / TEXT("PreInitCastToCloud.ini");
+	if (!IFileManager::Get().FileExists(*PreInitIni))
+	{
+		const FString MissingFileError = FString::Printf(TEXT("PreInitIni not found at %s"), *PreInitIni);
+		return MakeError(MissingFileError);
+	}
+
+	FConfigFile Ini;
+	FConfigContext::ReadSingleIntoLocalFile(Ini).Load(*PreInitIni);
+
+	return MakeValue(Ini);
 }
