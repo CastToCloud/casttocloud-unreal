@@ -1,0 +1,35 @@
+// Copyright Cast To Cloud 2024-2026. All Rights Reserved.
+
+using UnrealBuildTool;
+
+public class CastToCloudShared : ModuleRules
+{
+	public CastToCloudShared(ReadOnlyTargetRules Target) : base(Target)
+	{
+		PublicDependencyModuleNames.AddRange(
+			new string[]
+			{
+				"Core",
+				"CoreUObject",
+				"DeveloperSettings",
+				"Engine",
+				"Slate",
+				"SlateCore",
+			}
+		);
+
+		if (Target.bBuildEditor)
+		{
+			PublicDependencyModuleNames.AddRange(
+				new string[]
+				{
+					"Settings",
+					"SourceControl",
+					"UnrealEd",
+				}
+			);
+		}
+
+		RuntimeDependencies.Add("$(ProjectDir)/Intermediate/CastToCloud/PreInitCastToCloud.ini", StagedFileType.NonUFS);
+	}
+}

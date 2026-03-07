@@ -16,7 +16,7 @@
 
 #include "CtcAnalyticsBPFL.h"
 #include "CtcAnalyticsLog.h"
-#include "CtcHelpers.h"
+#include "CtcSharedHelpers.h"
 #include "CtcSharedSettings.h"
 
 extern ENGINE_API float GAverageFPS;
@@ -85,7 +85,7 @@ TStatId UCtcAnalyticsLocalPlayerTrackerSubsystem::GetStatId() const
 
 UWorld* UCtcAnalyticsLocalPlayerTrackerSubsystem::GetTickableGameObjectWorld() const
 {
-	return CastToCloudHelpers::GetCurrentWorld();
+	return CastToCloudSharedHelpers::GetCurrentWorld();
 }
 
 void UCtcAnalyticsLocalPlayerTrackerSubsystem::RegisterApplicationEvents()
@@ -239,7 +239,7 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWorldBeginPlay(UWorld* World)
 		return;
 	}
 
-	const TOptional<FString> WorldPackage = CastToCloudHelpers::GetWorldPackage(World);
+	const TOptional<FString> WorldPackage = CastToCloudSharedHelpers::GetWorldPackage(World);
 	if (WorldPackage.Get(TEXT("")).IsEmpty())
 	{
 		return;
@@ -261,7 +261,7 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWorldEndPlay(UWorld* World)
 		return;
 	}
 
-	const TOptional<FString> WorldPackage = CastToCloudHelpers::GetWorldPackage(World);
+	const TOptional<FString> WorldPackage = CastToCloudSharedHelpers::GetWorldPackage(World);
 	if (WorldPackage.Get(TEXT("")).IsEmpty())
 	{
 		return;
@@ -279,7 +279,7 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::OnWindowsAltF4Pressed()
 {
 	TOptional<FTransform> PlayerTransform = {};
 
-	if (const APlayerController* LocalController = CastToCloudHelpers::GetFirstLocalPlayerController())
+	if (const APlayerController* LocalController = CastToCloudSharedHelpers::GetFirstLocalPlayerController())
 	{
 		if (const APawn* PlayerPawn = LocalController->GetPawn())
 		{
@@ -359,7 +359,7 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::TickMovementTracking(float DeltaT
 		return;
 	}
 
-	const APlayerController* LocalController = CastToCloudHelpers::GetFirstLocalPlayerController();
+	const APlayerController* LocalController = CastToCloudSharedHelpers::GetFirstLocalPlayerController();
 	if (!LocalController)
 	{
 		return;
@@ -367,14 +367,14 @@ void UCtcAnalyticsLocalPlayerTrackerSubsystem::TickMovementTracking(float DeltaT
 
 	TOptional<FTransform> AutomatedTransform;
 
-	if (Settings->AutoPlayerMoveTrackingMethod == ECtcAnalyticsSpatialTracking::PlayerPawn)
+	if (Settings->AutoPlayerMoveTrackingMethod == ECtcSharedAnalyticsSpatialTracking::PlayerPawn)
 	{
 		if (const APawn* PlayerPawn = LocalController->GetPawn())
 		{
 			AutomatedTransform = PlayerPawn->GetActorTransform();
 		}
 	}
-	else if (Settings->AutoPlayerMoveTrackingMethod == ECtcAnalyticsSpatialTracking::Camera)
+	else if (Settings->AutoPlayerMoveTrackingMethod == ECtcSharedAnalyticsSpatialTracking::Camera)
 	{
 		if (const APlayerCameraManager* CameraManager = LocalController->PlayerCameraManager)
 		{

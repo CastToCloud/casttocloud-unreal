@@ -29,7 +29,7 @@
 
 #include "CtcAnalyticsEditorModule.h"
 #include "CtcAnalyticsLog.h"
-#include "CtcHelpers.h"
+#include "CtcSharedHelpers.h"
 #include "CtcSharedSettings.h"
 
 static FAutoConsoleCommand UploadCurrentViewportAsBackground(
@@ -61,7 +61,7 @@ void UCtcAnalyticsBackgroundSubsystem::UploadCurrentViewportAsBackground()
 
 void UCtcAnalyticsBackgroundSubsystem::UploadCurrentViewportAsBackground(const FString& InName)
 {
-	UWorld* World = CastToCloudHelpers::GetCurrentWorld();
+	UWorld* World = CastToCloudSharedHelpers::GetCurrentWorld();
 
 	FEditorViewportClient* ViewportClient = StaticCast<FEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
 	if (ViewportClient->IsActiveViewportType(LVT_Perspective))
@@ -140,7 +140,7 @@ void UCtcAnalyticsBackgroundSubsystem::UploadDataToBackend(UWorld* World, const 
 	PayloadObject->SetNumberField(TEXT("endY"), Bounds.Max.Y);
 	PayloadObject->SetNumberField(TEXT("endZ"), Bounds.Max.Z);
 	PayloadObject->SetStringField(TEXT("engineVersion"), FString::Printf(TEXT("%d.%d.%d"), ENGINE_MAJOR_VERSION, ENGINE_MINOR_VERSION, ENGINE_PATCH_VERSION));
-	PayloadObject->SetStringField(TEXT("assetPath"), *CastToCloudHelpers::GetWorldPackage(World));
+	PayloadObject->SetStringField(TEXT("assetPath"), *CastToCloudSharedHelpers::GetWorldPackage(World));
 	PayloadObject->SetStringField(TEXT("assetName"), Name);
 
 	FString JsonString;

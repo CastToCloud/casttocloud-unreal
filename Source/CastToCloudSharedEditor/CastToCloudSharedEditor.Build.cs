@@ -2,30 +2,30 @@
 
 using UnrealBuildTool;
 
-public class CastToCloudAnalyticsEditor : ModuleRules
+public class CastToCloudSharedEditor : ModuleRules
 {
-	public CastToCloudAnalyticsEditor(ReadOnlyTargetRules Target) : base(Target)
+	public CastToCloudSharedEditor(ReadOnlyTargetRules Target) : base(Target)
 	{
-		
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Core",
 				"CoreUObject",
-				"Engine",
+				"DesktopWidgets",
+				"DeveloperToolSettings",
 				"EditorSubsystem",
-				"Slate",
-				"SlateCore",
-				"InputCore",
-				"FunctionalTesting",
+				"Engine",
+				"PropertyEditor",
 				"LevelEditor",
+				"UnrealEd",
+				"ToolMenus",
+				"Projects",
 				"HTTP",
+				"HTTPServer",
 				"Json",
 				"JsonUtilities",
-				"DesktopWidgets",
-				"ToolMenus",
-				"UnrealEd",
-				"WorkspaceMenuStructure", 
+				"Slate",
+				"SlateCore",
 
 				"CastToCloudShared",
 				"CastToCloudAnalytics",

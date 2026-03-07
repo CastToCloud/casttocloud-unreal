@@ -24,7 +24,7 @@ public class CastToCloudAnalytics : ModuleRules
 				"Slate",
 				"SlateCore",
 
-				"CastToCloud",
+				"CastToCloudShared",
 			}
 		);
 

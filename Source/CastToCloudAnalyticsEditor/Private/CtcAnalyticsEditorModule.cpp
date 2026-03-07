@@ -18,7 +18,7 @@ namespace
 {
 	FText const CastToCloudCategory = INVTEXT("Cast To Cloud");
 
-	// TODO: - This should be moved to a shared module (ideally CastToCloudEditor, but CastToCloud with #ifdef is also fine)
+	// TODO: - This should be moved to a shared module (ideally CastToCloudSharedEditor, but CastToCloudShared with #ifdef is also fine)
 	TSharedRef<FWorkspaceItem> GetWorkspaceCategoryItem()
 	{
 		TSharedPtr<FWorkspaceItem> FoundCategory;

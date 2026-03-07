@@ -9,7 +9,7 @@
 #include <UObject/SoftObjectPath.h>
 
 #include "CtcAnalyticsEditorViewerData.h"
-#include "CtcPathReference.h"
+#include "CtcSharedPathReference.h"
 
 #include "CtcAnalyticsEditorViewerSettings.generated.h"
 
@@ -115,7 +115,7 @@ class UCtcAnalyticsEditorFileViewerSource : public UCtcAnalyticsEditorViewerData
 
 protected:
 	UPROPERTY(EditAnywhere, Category = NoCategory, meta = (FileTypeFilter = "Events Session (*.json)|*.json", FallbackBrowseDirectory = "$(ProjectDir)/Saved/CastToCloud/Analytics"))
-	FCtcPathReference PathReference;
+	FCtcSharedPathReference PathReference;
 
 private:
 	//~Begin UCtcAnalyticsEditorViewerSource interface

@@ -16,7 +16,7 @@
 	"EnabledByDefault": true,
 	"Modules": [
 		{
-			"Name": "CastToCloud",
+			"Name": "CastToCloudShared",
 			"Type": "Runtime",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux", "Android", "IOS" ],
 			"LoadingPhase": "PreDefault"
@@ -34,7 +34,7 @@
 			"LoadingPhase": "PreDefault"
 		},
 		{
-			"Name": "CastToCloudEditor",
+			"Name": "CastToCloudSharedEditor",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
 			"Type": "Editor",
 			"LoadingPhase": "PreDefault"

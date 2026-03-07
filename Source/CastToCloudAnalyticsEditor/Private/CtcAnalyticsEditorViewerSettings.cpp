@@ -17,7 +17,7 @@
 #include <Serialization/JsonSerializer.h>
 
 #include "CtcAnalyticsLog.h"
-#include "CtcHelpers.h"
+#include "CtcSharedHelpers.h"
 #include "CtcSharedSettings.h"
 
 UCtcAnalyticsEditorViewerSettings::UCtcAnalyticsEditorViewerSettings(const FObjectInitializer& ObjectInitializer)
@@ -236,7 +236,7 @@ void UCtcAnalyticsEditorApiViewerSource::RefreshResult()
 
 	TArray<TSharedPtr<FJsonValue>> FiltersArray;
 
-	if (const TOptional<FString> WorldPackage = CastToCloudHelpers::GetWorldPackage())
+	if (const TOptional<FString> WorldPackage = CastToCloudSharedHelpers::GetWorldPackage())
 	{
 		TSharedRef<FJsonObject> FilterObject = MakeShared<FJsonObject>();
 		FilterObject->SetStringField(TEXT("property"), TEXT("world"));

@@ -25,7 +25,7 @@
 
 #include "CtcAnalyticsConsumer.h"
 #include "CtcAnalyticsLog.h"
-#include "CtcHelpers.h"
+#include "CtcSharedHelpers.h"
 #include "CtcSharedSettings.h"
 
 // clang-format off
@@ -237,7 +237,7 @@ void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptio
 	Event.Timestamp = FDateTime::UtcNow();
 	Event.Attributes = Attributes;
 
-	if (const TOptional<FString> WorldPackage = CastToCloudHelpers::GetWorldPackage())
+	if (const TOptional<FString> WorldPackage = CastToCloudSharedHelpers::GetWorldPackage())
 	{
 		Event.World = *WorldPackage;
 	}
