@@ -34,10 +34,10 @@ static FDelayedAutoRegisterHelper MonitoringEnginePreInit(EDelayedRegisterRunPha
 
 		FConfigFile Ini = IniConfig.GetValue();
 
-		int32 TailSizeBytes = 1;
+		int32 TailSizeBytes = 0;
 		const bool bHasTailSize = Ini.GetInt(TEXT("/Script/CastToCloudShared.CtcSharedSettings"), TEXT("GameTailSizeBytes"), TailSizeBytes) && TailSizeBytes > 0;
 
-		FString TraceChannels;
+		FString TraceChannels = TEXT("");
 		const bool bHasChannels = Ini.GetString(TEXT("/Script/CastToCloudShared.CtcSharedSettings"), TEXT("TraceChannels"), TraceChannels) && !TraceChannels.IsEmpty();
 
 #if !WITH_EDITOR

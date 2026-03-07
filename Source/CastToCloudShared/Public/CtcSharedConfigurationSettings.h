@@ -60,3 +60,12 @@ static FCtcSharedConfigurationSettings PackagedGameClients = FCtcSharedConfigura
 		FCtcSharedConfigurationFlavourPair(EBuildConfiguration::Development, EBuildTargetType::Client),
 	}}
 );
+
+static FCtcSharedConfigurationSettings DevGameClients = FCtcSharedConfigurationSettings(
+	{.Flavors = {
+		FCtcSharedConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Game),
+		FCtcSharedConfigurationFlavourPair(EBuildConfiguration::Development, EBuildTargetType::Game),
+		FCtcSharedConfigurationFlavourPair(EBuildConfiguration::Test, EBuildTargetType::Client),
+		FCtcSharedConfigurationFlavourPair(EBuildConfiguration::Development, EBuildTargetType::Client),
+	}}
+);
