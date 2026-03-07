@@ -82,9 +82,8 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", InvalidEnumValues = "Disabled"))
 	ECtcSharedAnalyticsSpatialTracking AutoPlayerMoveTrackingMethod = ECtcSharedAnalyticsSpatialTracking::PlayerPawn;
 
-	UPROPERTY(Config, EditAnywhere, Category = "Analytics|PerformanceTracking", meta = (CopyToPreInitIni))
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (CopyToPreInitIni))
 	FCtcSharedConfigurationSettings TrackingEnabled = DevGameClients;
-
 	/*
 	 * Tail buffer size used in Editor builds (Unreal Insights default).
 	 * Not configurable via the plugin, but can be overridden at launch with `-tracetailmb=`.
