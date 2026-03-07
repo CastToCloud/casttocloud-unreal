@@ -78,6 +78,7 @@ void FCtcAnalyticsEditorModule::RegisterToolbarExtension()
 	UToolMenu* LevelEditorToolbar = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.User");
 	FToolMenuSection& Section = LevelEditorToolbar->AddSection("CastToCloud");
 
+	// clang-format off
 	FToolMenuEntry SectionDropdown = FToolMenuEntry::InitComboButton(
 		"CastToCloud",
 		FUIAction(),
@@ -86,6 +87,8 @@ void FCtcAnalyticsEditorModule::RegisterToolbarExtension()
 		INVTEXT("Cast To Cloud Actions"),
 		FSlateIcon(),
 		false);
+	// clang-format on
+
 	SectionDropdown.StyleNameOverride = "CalloutToolbar";
 	Section.AddEntry(SectionDropdown);
 }

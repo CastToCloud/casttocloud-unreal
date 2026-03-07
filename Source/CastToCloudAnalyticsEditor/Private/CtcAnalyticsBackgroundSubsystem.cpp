@@ -109,12 +109,14 @@ void UCtcAnalyticsBackgroundSubsystem::OnBuildGameplayEventsMenu(FMenuBuilder& M
 
 	MenuBuilder.AddWidget(SinglePropertyView.ToSharedRef(), INVTEXT("Background Name"), true);
 
+	// clang-format off
 	MenuBuilder.AddMenuEntry(
 		INVTEXT("Upload Background"),
 		INVTEXT("Uploads the current viewport as a background"),
 		FSlateIcon(),
 		FUIAction(FExecuteAction::CreateUObject(this, &UCtcAnalyticsBackgroundSubsystem::UploadCurrentViewportAsBackground))
 	);
+	// clang-format on
 }
 
 void UCtcAnalyticsBackgroundSubsystem::OnPostWorldInitialization(UWorld* World, const FWorldInitializationValues IVS)
