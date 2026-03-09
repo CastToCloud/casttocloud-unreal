@@ -6,7 +6,7 @@ public class CastToCloud : ModuleRules
 {
 	public CastToCloud(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PrivateDependencyModuleNames.AddRange(
+		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Core",

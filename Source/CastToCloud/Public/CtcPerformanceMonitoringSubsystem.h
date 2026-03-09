@@ -2,9 +2,10 @@
 
 #pragma once
 
-#include <CoreMinimal.h>
+#include <HAL/IConsoleManager.h>
 #include <Subsystems/GameInstanceSubsystem.h>
-#include <Tickable.h>
+
+#include "CtcSharedTickable.h"
 
 #include "CtcPerformanceMonitoringSubsystem.generated.h"
 
@@ -12,7 +13,7 @@
  *
  */
 UCLASS()
-class CASTTOCLOUD_API UCtcPerformanceMonitoringSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
+class CASTTOCLOUD_API UCtcPerformanceMonitoringSubsystem : public UGameInstanceSubsystem, public FTickableWithDebug
 {
 	GENERATED_BODY()
 
@@ -20,12 +21,13 @@ class CASTTOCLOUD_API UCtcPerformanceMonitoringSubsystem : public UGameInstanceS
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	// ~End UGameInstanceSubsystem interface
 
-	// FTickableGameObject interface
-	virtual void Tick(float DeltaTime) override;
+	// FTickableWithDebug interface
+	virtual void OnTick(float DeltaTime) override;
+	virtual void OnDebugTick(float DeltaTime) override;
 	virtual ETickableTickType GetTickableTickType() const override;
 	virtual TStatId GetStatId() const override;
 	virtual UWorld* GetTickableGameObjectWorld() const override;
-	// ~FTickableGameObject interface
+	// ~FTickableWithDebug interface
 
 	void OnAnomalyDetected();
 

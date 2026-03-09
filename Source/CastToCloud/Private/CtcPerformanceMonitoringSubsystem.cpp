@@ -17,8 +17,15 @@
 #include "CtcMetricsTraceHelpers.h"
 #include "CtcSharedHelpers.h"
 #include "CtcSharedSettings.h"
+#include "Engine/Engine.h"
 
-extern ENGINE_API float GAverageFPS;
+// clang-format off
+TAutoConsoleVariable CVarCtcPerformanceMonitoringPrintDebugFlags(
+	TEXT("CastToCloud.PerformanceMonitoring.PrintDebugFlags"),
+	false,
+	TEXT("Prints to screen the debug state of the performance monitoring subsystem")
+);
+// clang-format on
 
 // clang-format off
 FAutoConsoleCommand UCtcPerformanceMonitoringSubsystem::TriggerAnomalyDetected(
@@ -38,6 +45,8 @@ FAutoConsoleCommand UCtcPerformanceMonitoringSubsystem::TriggerAnomalyDetected(
 );
 // clang-format on
 
+extern ENGINE_API float GAverageFPS;
+
 bool UCtcPerformanceMonitoringSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
 	if (FParse::Param(FCommandLine::Get(), TEXT("MetricsAnyConfiguration")))
@@ -50,8 +59,13 @@ bool UCtcPerformanceMonitoringSubsystem::ShouldCreateSubsystem(UObject* Outer) c
 	return Settings && Settings->TrackingEnabled.IsCurrentConfigurationAllowed();
 }
 
-void UCtcPerformanceMonitoringSubsystem::Tick(float DeltaTime)
+void UCtcPerformanceMonitoringSubsystem::OnTick(float DeltaTime)
 {
+	if (!FApp::HasFocus())
+	{
+		return;
+	}
+
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 
 	RecentFrames.Add(GAverageFPS);
@@ -93,6 +107,33 @@ void UCtcPerformanceMonitoringSubsystem::Tick(float DeltaTime)
 	{
 		UE_LOG(LogCtcMetrics, Display, TEXT("Low framerate anomaly window started."));
 		AnomalyStart = FDateTime::UtcNow();
+	}
+}
+
+void UCtcPerformanceMonitoringSubsystem::OnDebugTick(float DeltaTime)
+{
+	if (!CVarCtcPerformanceMonitoringPrintDebugFlags.GetValueOnAnyThread())
+	{
+		return;
+	}
+
+	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
+
+	const TOptional<float> CurrentAverage = !RecentFrames.IsEmpty() ? Algo::Accumulate(RecentFrames, 0.0f) / RecentFrames.Num() : 0.0f;
+	const FString CurrentAverageValue = CurrentAverage ? *LexToString(*CurrentAverage) : TEXT("-");
+
+	const TOptional<FTimespan> TimeSinceAnomaly = AnomalyStart ? FDateTime::UtcNow() - *AnomalyStart : TOptional<FTimespan>();
+	const FString TimeSinceAnomalyString = FString::Printf(TEXT("%f/%f"), TimeSinceAnomaly ? TimeSinceAnomaly->GetTotalSeconds() : 0.0f, Settings->LowFpsDurationThreshold);
+
+	TArray<FString> DebugFlags;
+	DebugFlags.Add(FString::Printf(TEXT("RecentFrames: %s"), *LexToString(RecentFrames.Num())));
+	DebugFlags.Add(FString::Printf(TEXT("CurrentAverage: %s"), *CurrentAverageValue));
+	DebugFlags.Add(FString::Printf(TEXT("AnomalyStart: %s"), *TimeSinceAnomalyString));
+
+	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Black, TEXT("Cast To Cloud Performance Monitoring"), false);
+	for (const FString& DebugFlag : DebugFlags)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Black, *DebugFlag, false);
 	}
 }
 
