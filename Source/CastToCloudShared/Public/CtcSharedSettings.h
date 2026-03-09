@@ -19,6 +19,7 @@ enum class ECtcSharedAnalyticsSpatialTracking : uint8
 	// TODO: Would it make sense to have MouseLocation (slate cursor coords) and maybe ProjectMouseLocation (cursor in 3d space) ?
 };
 
+//TODO: Make these settings backwards compatible
 /**
  * Shared configuration settings shared between all CastToCloud modules
  */
@@ -81,6 +82,29 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", InvalidEnumValues = "Disabled"))
 	ECtcSharedAnalyticsSpatialTracking AutoPlayerMoveTrackingMethod = ECtcSharedAnalyticsSpatialTracking::PlayerPawn;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|LogForwarding", meta = (ConfigRestartRequired = true))
+	FCtcSharedConfigurationSettings LogForwardingEnabled;
+	/*
+	 * Number of seconds between log upload attempts.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|LogForwarding", meta = (ClampMin = "0.1", ConfigRestartRequired = true, Units = "s", UIMin = "0.1"))
+	float LogForwardingInterval = 2.0f;
+	/*
+	 * Maximum number of log entries sent in a single request.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|LogForwarding", meta = (ClampMin = "1", ConfigRestartRequired = true, UIMin = "1"))
+	int32 LogForwardingBatchSize = 50;
+	/*
+	 * Maximum number of pending log entries kept in memory before oldest entries are dropped.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|LogForwarding", meta = (ClampMin = "1", ConfigRestartRequired = true, UIMin = "1"))
+	int32 LogForwardingMaxBufferedEntries = 1000;
+	/*
+	 * Hard cap applied to individual messages before they are serialized to JSON.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|LogForwarding", meta = (ClampMin = "128", ConfigRestartRequired = true, UIMin = "128"))
+	int32 LogForwardingMaxMessageLength = 2048;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (CopyToPreInitIni))
 	FCtcSharedConfigurationSettings TrackingEnabled = DevGameClients;

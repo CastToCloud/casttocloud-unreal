@@ -2,11 +2,13 @@
 
 #include "CtcAnalyticsLocalPlayerTrackerSubsystem.h"
 
+#include <Camera/PlayerCameraManager.h>
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
 #include <Engine/World.h>
 #include <Framework/Application/SlateApplication.h>
 #include <GameFramework/Pawn.h>
+#include <GameFramework/PlayerController.h>
 #include <HAL/Platform.h>
 #include <Null/NullPlatformApplicationMisc.h>
 
@@ -20,6 +22,8 @@
 #include "CtcSharedSettings.h"
 
 extern ENGINE_API float GAverageFPS;
+
+UCtcAnalyticsLocalPlayerTrackerSubsystem::~UCtcAnalyticsLocalPlayerTrackerSubsystem() = default;
 
 void UCtcAnalyticsLocalPlayerTrackerSubsystem::SetMovementTracking(bool bEnabled)
 {
@@ -80,7 +84,7 @@ ETickableTickType UCtcAnalyticsLocalPlayerTrackerSubsystem::GetTickableTickType(
 
 TStatId UCtcAnalyticsLocalPlayerTrackerSubsystem::GetStatId() const
 {
-	RETURN_QUICK_DECLARE_CYCLE_STAT(UCtcAnalyticsAutoTrackerSubsystem, STATGROUP_Tickables);
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UCtcAnalyticsLocalPlayerTrackerSubsystem, STATGROUP_Tickables);
 }
 
 UWorld* UCtcAnalyticsLocalPlayerTrackerSubsystem::GetTickableGameObjectWorld() const

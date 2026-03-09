@@ -8,7 +8,7 @@
 
 #include <Windows/WindowsApplication.h>
 
-class FCtcWindowsMessageHandler : public IWindowsMessageHandler
+class CASTTOCLOUDANALYTICS_API FCtcWindowsMessageHandler : public IWindowsMessageHandler
 {
 public:
 	virtual ~FCtcWindowsMessageHandler() = default;

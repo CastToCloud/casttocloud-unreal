@@ -6,17 +6,25 @@ public class CastToCloud : ModuleRules
 {
 	public CastToCloud(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PrivateDependencyModuleNames.AddRange(
+		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
+				"ApplicationCore",
 				"Core",
 				"CoreUObject",
 				"Engine",
+				"Slate",
+				"SlateCore",
 
 				"CastToCloudAnalytics",
 				"CastToCloudMetrics",
 				"CastToCloudShared",
 			}
 		);
+
+		if (Target.bBuildEditor)
+		{
+			PublicDependencyModuleNames.Add("UnrealEd");
+		}
 	}
 }

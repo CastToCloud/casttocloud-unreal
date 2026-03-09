@@ -4,11 +4,13 @@
 
 #include <Engine/GameInstance.h>
 #include <HAL/Platform.h>
+#include <Misc/Optional.h>
 #include <Subsystems/EngineSubsystem.h>
+#include <Templates/UniquePtr.h>
 #include <Tickable.h>
 
 #if PLATFORM_WINDOWS
-#include "CtcAnalyticsWindowsMessageHandler.h" //NOTE: Full include needed in header so TUniquePtr can access the destructor
+#include "CtcAnalyticsWindowsMessageHandler.h"
 #endif
 
 #include "CtcAnalyticsLocalPlayerTrackerSubsystem.generated.h"
@@ -42,11 +44,13 @@ struct FFpsTracker
 };
 
 UCLASS()
-class CASTTOCLOUDANALYTICS_API UCtcAnalyticsLocalPlayerTrackerSubsystem : public UEngineSubsystem, public FTickableGameObject
+class CASTTOCLOUD_API UCtcAnalyticsLocalPlayerTrackerSubsystem : public UEngineSubsystem, public FTickableGameObject
 {
 	GENERATED_BODY()
 
 public:
+	virtual ~UCtcAnalyticsLocalPlayerTrackerSubsystem() override;
+
 	UFUNCTION(BlueprintCallable, Category = "CastToCloud|Analytics")
 	void SetMovementTracking(bool bEnabled);
 
