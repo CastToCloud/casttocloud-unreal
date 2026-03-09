@@ -4,7 +4,6 @@
 
 #include <Containers/Ticker.h>
 #include <HAL/CriticalSection.h>
-#include <Interfaces/IHttpRequest.h>
 #include <Misc/OutputDevice.h>
 
 struct FCtcMetricsCapturedLogEntry
@@ -41,21 +40,17 @@ private:
 	bool ShouldCapture(ELogVerbosity::Type Verbosity, const FName& Category) const;
 	bool ShouldFlushNow() const;
 	void FlushPendingLogs(bool bBlocking);
-	void OnFlushResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bSuccess, FString BatchId, TArray<FCtcMetricsCapturedLogEntry> Entries);
-	void CancelInFlightRequest();
+	bool AppendBatchToOutputFile(const FString& BatchId, const TArray<FCtcMetricsCapturedLogEntry>& Entries);
 	void RequeueEntries(TArray<FCtcMetricsCapturedLogEntry>&& Entries);
-	FString BuildRequestBody(const FString& BatchId, const TArray<FCtcMetricsCapturedLogEntry>& Entries) const;
+	FString BuildBatchPayload(const FString& BatchId, const TArray<FCtcMetricsCapturedLogEntry>& Entries) const;
 	static FString GetVerbosityString(ELogVerbosity::Type Verbosity);
 
 	mutable FCriticalSection CriticalSection;
+	mutable FCriticalSection OutputFileCriticalSection;
 	TArray<FCtcMetricsCapturedLogEntry> PendingEntries;
-	TArray<FCtcMetricsCapturedLogEntry> InFlightEntries;
-	FHttpRequestPtr InFlightRequest;
 
-	FString EndpointUrl;
-	FString ApiKey;
+	FString OutputFilePath;
 	float FlushIntervalSeconds = 2.0f;
-	float RequestTimeoutSeconds = 5.0f;
 	int32 BatchSize = 50;
 	int32 MaxBufferedEntries = 1000;
 	int32 MaxMessageLength = 2048;

@@ -3,15 +3,16 @@
 #include "CtcMetricsBackendOutputDevice.h"
 
 #include <Dom/JsonObject.h>
+#include <HAL/FileManager.h>
 #include <HAL/PlatformTLS.h>
-#include <HttpModule.h>
-#include <Interfaces/IHttpResponse.h>
 #include <Math/UnrealMathUtility.h>
 #include <Misc/App.h>
 #include <Misc/CommandLine.h>
 #include <Misc/CoreGlobals.h>
+#include <Misc/FileHelper.h>
 #include <Misc/Guid.h>
 #include <Misc/OutputDeviceRedirector.h>
+#include <Misc/Paths.h>
 #include <Misc/ScopeLock.h>
 #include <Serialization/JsonSerializer.h>
 #include <Serialization/JsonWriter.h>
@@ -26,8 +27,9 @@ namespace
 	const FName HttpCategoryName(TEXT("LogHttp"));
 	const FName HttpRetryCategoryName(TEXT("LogHttpRetrySystem"));
 	const FName HttpResponseCategoryName(TEXT("LogHttpResponse"));
-	const TCHAR* LogForwardingEndpoint = TEXT("metrics/logs/record");
 	const TCHAR* LogForwardingOverride = TEXT("LogForwardingAnyConfiguration");
+	const TCHAR* LogForwardingOutputPathOverride = TEXT("LogForwardingOutputPath=");
+	const TCHAR* DefaultLogForwardingOutputFile = TEXT("CastToCloud/ForwardedLogs.jsonl");
 }
 
 FCtcMetricsBackendOutputDevice::FCtcMetricsBackendOutputDevice()
@@ -45,18 +47,24 @@ FCtcMetricsBackendOutputDevice::FCtcMetricsBackendOutputDevice()
 		return;
 	}
 
-	EndpointUrl = Settings->ApiUrl / LogForwardingEndpoint;
-	ApiKey = Settings->RuntimeApiKey;
 	FlushIntervalSeconds = FMath::Max(Settings->LogForwardingInterval, 0.1f);
 	BatchSize = FMath::Max(Settings->LogForwardingBatchSize, 1);
 	MaxBufferedEntries = FMath::Max(Settings->LogForwardingMaxBufferedEntries, BatchSize);
 	MaxMessageLength = FMath::Max(Settings->LogForwardingMaxMessageLength, 128);
+	OutputFilePath = FPaths::Combine(FPaths::ProjectSavedDir(), DefaultLogForwardingOutputFile);
 
-	if (EndpointUrl.IsEmpty() || ApiKey.IsEmpty())
+	FString OutputPathOverride;
+	if (FParse::Value(FCommandLine::Get(), LogForwardingOutputPathOverride, OutputPathOverride) && !OutputPathOverride.IsEmpty())
 	{
-		UE_LOG(LogCtcMetrics, Warning, TEXT("Log forwarding is enabled but missing ApiUrl or RuntimeApiKey. The output device will stay disabled."));
-		bEnabled = false;
+		OutputFilePath = OutputPathOverride;
 	}
+
+	if (FPaths::IsRelative(OutputFilePath))
+	{
+		OutputFilePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir(), OutputFilePath);
+	}
+
+	FPaths::NormalizeFilename(OutputFilePath);
 }
 
 FCtcMetricsBackendOutputDevice::~FCtcMetricsBackendOutputDevice()
@@ -68,6 +76,14 @@ bool FCtcMetricsBackendOutputDevice::Setup()
 {
 	if (!bEnabled || GLog == nullptr)
 	{
+		return false;
+	}
+
+	const FString OutputDirectory = FPaths::GetPath(OutputFilePath);
+	if (!OutputDirectory.IsEmpty() && !IFileManager::Get().MakeDirectory(*OutputDirectory, true))
+	{
+		UE_LOG(LogCtcMetrics, Warning, TEXT("Log forwarding output is enabled but output directory could not be created: %s. The output device will stay disabled."), *OutputDirectory);
+		bEnabled = false;
 		return false;
 	}
 
@@ -86,7 +102,7 @@ bool FCtcMetricsBackendOutputDevice::Setup()
 	GLog->SerializeBacklog(this);
 #endif
 
-	UE_LOG(LogCtcMetrics, Display, TEXT("Backend log forwarding enabled. Endpoint=%s BatchSize=%d FlushIntervalSeconds=%s"), *EndpointUrl, BatchSize, *LexToString(FlushIntervalSeconds));
+	UE_LOG(LogCtcMetrics, Display, TEXT("Log forwarding output enabled. OutputFile=%s BatchSize=%d FlushIntervalSeconds=%s"), *OutputFilePath, BatchSize, *LexToString(FlushIntervalSeconds));
 
 	return true;
 }
@@ -137,7 +153,7 @@ void FCtcMetricsBackendOutputDevice::Serialize(const TCHAR* V, ELogVerbosity::Ty
 		if (!bHasLoggedDropWarning)
 		{
 			bHasLoggedDropWarning = true;
-			UE_LOG(LogCtcMetrics, Warning, TEXT("Log forwarding buffer overflowed. Oldest entries will be dropped until the backend catches up."));
+			UE_LOG(LogCtcMetrics, Warning, TEXT("Log forwarding buffer overflowed. Oldest entries will be dropped until file writes catch up."));
 		}
 	}
 }
@@ -166,7 +182,6 @@ void FCtcMetricsBackendOutputDevice::TearDown()
 		GLog->RemoveOutputDevice(this);
 	}
 
-	CancelInFlightRequest();
 	FlushPendingLogs(true);
 }
 
@@ -200,7 +215,7 @@ bool FCtcMetricsBackendOutputDevice::ShouldCapture(ELogVerbosity::Type Verbosity
 bool FCtcMetricsBackendOutputDevice::ShouldFlushNow() const
 {
 	FScopeLock Lock(&CriticalSection);
-	if (!bIsRegistered || InFlightRequest.IsValid() || PendingEntries.IsEmpty())
+	if (!bIsRegistered || PendingEntries.IsEmpty())
 	{
 		return false;
 	}
@@ -218,7 +233,7 @@ void FCtcMetricsBackendOutputDevice::FlushPendingLogs(bool bBlocking)
 	TArray<FCtcMetricsCapturedLogEntry> BatchEntries;
 	{
 		FScopeLock Lock(&CriticalSection);
-		if ((!bBlocking && !bIsRegistered) || InFlightRequest.IsValid() || PendingEntries.IsEmpty())
+		if ((!bBlocking && !bIsRegistered) || PendingEntries.IsEmpty())
 		{
 			return;
 		}
@@ -230,83 +245,34 @@ void FCtcMetricsBackendOutputDevice::FlushPendingLogs(bool bBlocking)
 	}
 
 	const FString BatchId = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower);
-	const FString RequestBody = BuildRequestBody(BatchId, BatchEntries);
-
-	FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
-	Request->SetVerb(TEXT("POST"));
-	Request->SetURL(EndpointUrl);
-	Request->SetHeader(TEXT("X-API-Key"), ApiKey);
-	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-	Request->SetTimeout(RequestTimeoutSeconds);
-	Request->SetActivityTimeout(RequestTimeoutSeconds);
-	Request->SetContentAsString(RequestBody);
-
-	if (bBlocking)
+	if (!AppendBatchToOutputFile(BatchId, BatchEntries))
 	{
-		Request->ProcessRequestUntilComplete();
-		const bool bSuccess = Request->GetStatus() == EHttpRequestStatus::Succeeded;
-		OnFlushResponse(Request, Request->GetResponse(), bSuccess, BatchId, MoveTemp(BatchEntries));
+		RequeueEntries(MoveTemp(BatchEntries));
 		return;
 	}
 
-	{
-		FScopeLock Lock(&CriticalSection);
-		InFlightEntries = BatchEntries;
-		InFlightRequest = Request;
-	}
-
-	Request->OnProcessRequestComplete().BindRaw(this, &FCtcMetricsBackendOutputDevice::OnFlushResponse, BatchId, BatchEntries);
-	Request->ProcessRequest();
+	UE_LOG(LogCtcMetrics, VeryVerbose, TEXT("[%s] Appended %d log entries to %s."), *BatchId, BatchEntries.Num(), *OutputFilePath);
 }
 
-void FCtcMetricsBackendOutputDevice::OnFlushResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bSuccess, FString BatchId, TArray<FCtcMetricsCapturedLogEntry> Entries)
+bool FCtcMetricsBackendOutputDevice::AppendBatchToOutputFile(const FString& BatchId, const TArray<FCtcMetricsCapturedLogEntry>& Entries)
 {
+	FString BatchPayload = BuildBatchPayload(BatchId, Entries);
+	BatchPayload += LINE_TERMINATOR;
+
+	constexpr uint32 WriteFlags = FILEWRITE_Append;
+	bool bWriteSucceeded = false;
 	{
-		FScopeLock Lock(&CriticalSection);
-		if (Request == InFlightRequest)
-		{
-			InFlightRequest.Reset();
-			InFlightEntries.Reset();
-		}
+		FScopeLock Lock(&OutputFileCriticalSection);
+		bWriteSucceeded = FFileHelper::SaveStringToFile(BatchPayload, *OutputFilePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM, &IFileManager::Get(), WriteFlags);
 	}
 
-	if (!bSuccess || !Response.IsValid())
+	if (!bWriteSucceeded)
 	{
-		UE_LOG(LogCtcMetrics, Error, TEXT("[%s] Log forwarding request failed before receiving a valid response. Entries=%d"), *BatchId, Entries.Num());
-		RequeueEntries(MoveTemp(Entries));
-		return;
+		UE_LOG(LogCtcMetrics, Error, TEXT("[%s] Failed to append %d log entries to %s."), *BatchId, Entries.Num(), *OutputFilePath);
+		return false;
 	}
 
-	if (!EHttpResponseCodes::IsOk(Response->GetResponseCode()))
-	{
-		UE_LOG(LogCtcMetrics, Error, TEXT("[%s] Log forwarding request failed. ResponseCode=%d Body=%s"), *BatchId, Response->GetResponseCode(), *Response->GetContentAsString());
-		RequeueEntries(MoveTemp(Entries));
-		return;
-	}
-
-	UE_LOG(LogCtcMetrics, VeryVerbose, TEXT("[%s] Forwarded %d log entries to the backend."), *BatchId, Entries.Num());
-}
-
-void FCtcMetricsBackendOutputDevice::CancelInFlightRequest()
-{
-	FHttpRequestPtr RequestToCancel;
-	TArray<FCtcMetricsCapturedLogEntry> EntriesToRequeue;
-
-	{
-		FScopeLock Lock(&CriticalSection);
-		RequestToCancel = InFlightRequest;
-		EntriesToRequeue = MoveTemp(InFlightEntries);
-		InFlightEntries.Reset();
-		InFlightRequest.Reset();
-	}
-
-	if (RequestToCancel.IsValid())
-	{
-		RequestToCancel->OnProcessRequestComplete().Unbind();
-		RequestToCancel->CancelRequest();
-	}
-
-	RequeueEntries(MoveTemp(EntriesToRequeue));
+	return true;
 }
 
 void FCtcMetricsBackendOutputDevice::RequeueEntries(TArray<FCtcMetricsCapturedLogEntry>&& Entries)
@@ -331,17 +297,17 @@ void FCtcMetricsBackendOutputDevice::RequeueEntries(TArray<FCtcMetricsCapturedLo
 	}
 }
 
-FString FCtcMetricsBackendOutputDevice::BuildRequestBody(const FString& BatchId, const TArray<FCtcMetricsCapturedLogEntry>& Entries) const
+FString FCtcMetricsBackendOutputDevice::BuildBatchPayload(const FString& BatchId, const TArray<FCtcMetricsCapturedLogEntry>& Entries) const
 {
-	TSharedRef<FJsonObject> RequestBody = MakeShared<FJsonObject>();
-	RequestBody->SetStringField(TEXT("batchId"), BatchId);
-	RequestBody->SetStringField(TEXT("sessionId"), FApp::GetSessionId().ToString());
-	RequestBody->SetStringField(TEXT("projectName"), FApp::GetProjectName());
-	RequestBody->SetStringField(TEXT("capturedAtUtc"), FDateTime::UtcNow().ToIso8601());
-	RequestBody->SetStringField(TEXT("buildConfiguration"), LexToString(FApp::GetBuildConfiguration()));
-	RequestBody->SetStringField(TEXT("buildTarget"), LexToString(FApp::GetBuildTargetType()));
-	RequestBody->SetStringField(TEXT("world"), CastToCloudSharedHelpers::GetWorldPackage().Get(TEXT("")));
-	RequestBody->SetStringField(TEXT("source"), TEXT("unreal"));
+	TSharedRef<FJsonObject> BatchPayload = MakeShared<FJsonObject>();
+	BatchPayload->SetStringField(TEXT("batchId"), BatchId);
+	BatchPayload->SetStringField(TEXT("sessionId"), FApp::GetSessionId().ToString());
+	BatchPayload->SetStringField(TEXT("projectName"), FApp::GetProjectName());
+	BatchPayload->SetStringField(TEXT("capturedAtUtc"), FDateTime::UtcNow().ToIso8601());
+	BatchPayload->SetStringField(TEXT("buildConfiguration"), LexToString(FApp::GetBuildConfiguration()));
+	BatchPayload->SetStringField(TEXT("buildTarget"), LexToString(FApp::GetBuildTargetType()));
+	BatchPayload->SetStringField(TEXT("world"), CastToCloudSharedHelpers::GetWorldPackage().Get(TEXT("")));
+	BatchPayload->SetStringField(TEXT("source"), TEXT("unreal"));
 
 	TArray<TSharedPtr<FJsonValue>> EntryValues;
 	EntryValues.Reserve(Entries.Num());
@@ -361,12 +327,12 @@ FString FCtcMetricsBackendOutputDevice::BuildRequestBody(const FString& BatchId,
 		EntryValues.Add(MakeShared<FJsonValueObject>(EntryObject));
 	}
 
-	RequestBody->SetArrayField(TEXT("entries"), EntryValues);
+	BatchPayload->SetArrayField(TEXT("entries"), EntryValues);
 
-	FString RequestBodyString;
-	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBodyString);
-	ensure(FJsonSerializer::Serialize(RequestBody, Writer));
-	return RequestBodyString;
+	FString BatchPayloadString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&BatchPayloadString);
+	ensure(FJsonSerializer::Serialize(BatchPayload, Writer));
+	return BatchPayloadString;
 }
 
 FString FCtcMetricsBackendOutputDevice::GetVerbosityString(ELogVerbosity::Type Verbosity)

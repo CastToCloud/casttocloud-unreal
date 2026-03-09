@@ -86,12 +86,12 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|LogForwarding", meta = (ConfigRestartRequired = true))
 	FCtcSharedConfigurationSettings LogForwardingEnabled;
 	/*
-	 * Number of seconds between log upload attempts.
+	 * Number of seconds between log flush attempts.
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|LogForwarding", meta = (ClampMin = "0.1", ConfigRestartRequired = true, Units = "s", UIMin = "0.1"))
 	float LogForwardingInterval = 2.0f;
 	/*
-	 * Maximum number of log entries sent in a single request.
+	 * Maximum number of log entries written in a single flush.
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|LogForwarding", meta = (ClampMin = "1", ConfigRestartRequired = true, UIMin = "1"))
 	int32 LogForwardingBatchSize = 50;

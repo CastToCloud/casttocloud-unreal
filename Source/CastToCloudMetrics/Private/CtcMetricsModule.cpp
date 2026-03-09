@@ -15,7 +15,7 @@ namespace
 
 	FAutoConsoleCommand FlushForwardedLogs(
 		TEXT("CastToCloud.LogForwarding.Flush"),
-		TEXT("Immediately attempts to flush pending log forwarding entries to the backend."),
+		TEXT("Immediately attempts to flush pending log forwarding entries to the output file."),
 		FConsoleCommandDelegate::CreateLambda(
 			[]
 			{
@@ -32,7 +32,7 @@ namespace
 
 	FAutoConsoleCommand EmitForwardedTestLog(
 		TEXT("CastToCloud.LogForwarding.EmitTest"),
-		TEXT("Emits a test log line that should be captured by the backend output device."),
+		TEXT("Emits a test log line that should be captured by the log forwarding output device."),
 		FConsoleCommandDelegate::CreateLambda(
 			[]
 			{
