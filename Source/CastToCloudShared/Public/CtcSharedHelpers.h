@@ -2,8 +2,7 @@
 
 #pragma once
 
-#include <Misc/Optional.h>
-#include <Templates/ValueOrError.h>
+#include <CoreMinimal.h>
 
 class APlayerController;
 
@@ -13,4 +12,9 @@ namespace CastToCloudSharedHelpers
 	CASTTOCLOUDSHARED_API TOptional<FString> GetWorldPackage(const UWorld* World = nullptr);
 	CASTTOCLOUDSHARED_API APlayerController* GetFirstLocalPlayerController(const UWorld* World = nullptr);
 	CASTTOCLOUDSHARED_API TValueOrError<FConfigFile, FString> GetPreInitConfig();
+
+	using FGetAutoTransformContextDelegate = TTSDelegate<TOptional<FTransform>()>;
+	static CASTTOCLOUDSHARED_API FGetAutoTransformContextDelegate& GetAutoTransformContextDelegate();
+	TOptional<FTransform> GetAutoTransformContext();
+	TOptional<FTransform> GetAutoTransformContextFromPlayer();
 } // namespace CastToCloudSharedHelpers

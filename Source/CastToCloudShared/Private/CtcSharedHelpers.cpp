@@ -4,6 +4,7 @@
 
 #include <Engine/GameEngine.h>
 #include <Engine/LocalPlayer.h>
+#include <GameFramework/Pawn.h>
 #include <HAL/FileManager.h>
 #include <Misc/CommandLine.h>
 #include <Misc/ConfigCacheIni.h>
@@ -99,4 +100,42 @@ TValueOrError<FConfigFile, FString> CastToCloudSharedHelpers::GetPreInitConfig()
 	FConfigContext::ReadSingleIntoLocalFile(Ini).Load(*PreInitIni);
 
 	return MakeValue(Ini);
+}
+
+CastToCloudSharedHelpers::FGetAutoTransformContextDelegate& CastToCloudSharedHelpers::GetAutoTransformContextDelegate()
+{
+	static FGetAutoTransformContextDelegate Delegate;
+	return Delegate;
+}
+
+TOptional<FTransform> CastToCloudSharedHelpers::GetAutoTransformContext()
+{
+	FGetAutoTransformContextDelegate& Delegate = GetAutoTransformContextDelegate();
+	if (Delegate.IsBound())
+	{
+		return Delegate.Execute();
+	}
+
+	return GetAutoTransformContextFromPlayer();
+}
+
+TOptional<FTransform> CastToCloudSharedHelpers::GetAutoTransformContextFromPlayer()
+{
+	const APlayerController* LocalController = GetFirstLocalPlayerController();
+	if (!LocalController)
+	{
+		return {};
+	}
+
+	if (const APawn* PlayerPawn = LocalController->GetPawn())
+	{
+		return PlayerPawn->GetActorTransform();
+	}
+
+	if (const APlayerCameraManager* CameraManager = LocalController->PlayerCameraManager)
+	{
+		return FTransform(CameraManager->GetCameraRotation(), CameraManager->GetCameraLocation());
+	}
+
+	return {};
 }
