@@ -218,6 +218,6 @@ void UCtcPerformanceMonitoringSubsystem::RecordBadPerformance(TArray<FAnalyticsE
 	Attributes.Emplace(TEXT("trace_id"), TraceId);
 	// TODO the event above should also contain the upscaling applied if any or "native"
 	TOptional<FTransform> LocationContext = CastToCloudSharedHelpers::GetAutoTransformContext();
-	//TODO: Use the new helper above everywhere. Ideally when we transition the analytics thing into a subsystem.
+	// TODO: Use the new helper above everywhere. Ideally when we transition the analytics thing into a subsystem.
 	UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(TEXT("Trace"), LocationContext, Attributes);
 }
