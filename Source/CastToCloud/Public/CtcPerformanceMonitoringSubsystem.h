@@ -7,7 +7,7 @@
 
 #include "CtcPerformanceMonitoringSubsystem.generated.h"
 
-enum class EFrameHitchType;
+enum class EFrameHitchType : uint8;
 struct FAnalyticsEventAttribute;
 
 /**

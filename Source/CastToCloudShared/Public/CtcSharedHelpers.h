@@ -14,7 +14,7 @@ namespace CastToCloudSharedHelpers
 	CASTTOCLOUDSHARED_API TValueOrError<FConfigFile, FString> GetPreInitConfig();
 
 	using FGetAutoTransformContextDelegate = TTSDelegate<TOptional<FTransform>()>;
-	static CASTTOCLOUDSHARED_API FGetAutoTransformContextDelegate& GetAutoTransformContextDelegate();
-	TOptional<FTransform> GetAutoTransformContext();
-	TOptional<FTransform> GetAutoTransformContextFromPlayer();
+	CASTTOCLOUDSHARED_API FGetAutoTransformContextDelegate& GetAutoTransformContextDelegate();
+	CASTTOCLOUDSHARED_API TOptional<FTransform> GetAutoTransformContext();
+	CASTTOCLOUDSHARED_API TOptional<FTransform> GetAutoTransformContextFromPlayer();
 } // namespace CastToCloudSharedHelpers
