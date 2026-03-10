@@ -2,12 +2,14 @@
 
 #pragma once
 
-#include <HAL/IConsoleManager.h>
 #include <Subsystems/GameInstanceSubsystem.h>
 
 #include "CtcSharedTickable.h"
 
 #include "CtcPerformanceMonitoringSubsystem.generated.h"
+
+enum class EFrameHitchType;
+struct FAnalyticsEventAttribute;
 
 /**
  *
@@ -17,7 +19,12 @@ class CASTTOCLOUD_API UCtcPerformanceMonitoringSubsystem : public UGameInstanceS
 {
 	GENERATED_BODY()
 
+public:
+	void RecordBadPerformance(TArray<FAnalyticsEventAttribute> Attributes = TArray<FAnalyticsEventAttribute>());
+
+private:
 	// ~Begin UGameInstanceSubsystem interface
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	// ~End UGameInstanceSubsystem interface
 
@@ -29,11 +36,11 @@ class CASTTOCLOUD_API UCtcPerformanceMonitoringSubsystem : public UGameInstanceS
 	virtual UWorld* GetTickableGameObjectWorld() const override;
 	// ~FTickableWithDebug interface
 
-	void OnAnomalyDetected();
+	void OnHitchDetected(EFrameHitchType Type, float Duration);
+	void OnLowFPSDetected(float Average, float Duration);
 
-	TOptional<FDateTime> AnomalyStart;
-	int32 NumAnomaliesRecorded = 0;
-	static FAutoConsoleCommand TriggerAnomalyDetected;
-
+	TOptional<FDateTime> LowFPSStartTime;
 	TArray<float> RecentFrames;
+
+	int32 BadPerformanceReportsCount = 0;
 };

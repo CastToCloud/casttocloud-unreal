@@ -4,6 +4,8 @@
 
 #include <Algo/Accumulate.h>
 #include <Camera/PlayerCameraManager.h>
+#include <ChartCreation.h>
+#include <Engine/Engine.h>
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>
 #include <GameFramework/Pawn.h>
@@ -17,7 +19,6 @@
 #include "CtcMetricsTraceHelpers.h"
 #include "CtcSharedHelpers.h"
 #include "CtcSharedSettings.h"
-#include "Engine/Engine.h"
 
 // clang-format off
 TAutoConsoleVariable CVarCtcPerformanceMonitoringPrintDebugFlags(
@@ -28,9 +29,9 @@ TAutoConsoleVariable CVarCtcPerformanceMonitoringPrintDebugFlags(
 // clang-format on
 
 // clang-format off
-FAutoConsoleCommand UCtcPerformanceMonitoringSubsystem::TriggerAnomalyDetected(
-	TEXT("CastToCloud.PerformanceMonitoring.TriggerAnomalyDetected"),
-	TEXT("Debug command that simulates a detected anomaly. Bypasses detection logic and immediately records and uploads a trace snapshot."),
+static FAutoConsoleCommand RecordDebugBadPerformance(
+	TEXT("CastToCloud.PerformanceMonitoring.RecordBadPerformance"),
+	TEXT("Debug command that bypasses detection logic and immediately records and uploads a trace snapshot."),
 	FConsoleCommandWithWorldArgsAndOutputDeviceDelegate::CreateLambda(
 		[](const TArray<FString>& Args, UWorld* World, FOutputDevice& Device)
 		{
@@ -38,14 +39,45 @@ FAutoConsoleCommand UCtcPerformanceMonitoringSubsystem::TriggerAnomalyDetected(
 			UCtcPerformanceMonitoringSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UCtcPerformanceMonitoringSubsystem>() : nullptr;
 			if (Subsystem)
 			{
-				Subsystem->OnAnomalyDetected();
+				TArray<FAnalyticsEventAttribute> Attributes;
+				Attributes.Emplace(TEXT("reason"), TEXT("Debug Command"));
+				Subsystem->RecordBadPerformance(Attributes);
 			}
 		}
 	)
 );
 // clang-format on
 
+namespace
+{
+	FString LexToString(EFrameHitchType HitchType)
+	{
+		switch (HitchType)
+		{
+		case EFrameHitchType::NoHitch:
+			return TEXT("NoHitch");
+		case EFrameHitchType::UnknownUnit:
+			return TEXT("UnknownUnit");
+		case EFrameHitchType::GameThread:
+			return TEXT("GameThread");
+		case EFrameHitchType::RenderThread:
+			return TEXT("RenderThread");
+		case EFrameHitchType::RHIThread:
+			return TEXT("RHIThread");
+		case EFrameHitchType::GPU:
+			return TEXT("GPU");
+		default:
+			return TEXT("Unknown");
+		}
+	}
+} // namespace
+
 extern ENGINE_API float GAverageFPS;
+
+void UCtcPerformanceMonitoringSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	GEngine->OnHitchDetectedDelegate.AddUObject(this, &UCtcPerformanceMonitoringSubsystem::OnHitchDetected);
+}
 
 bool UCtcPerformanceMonitoringSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
@@ -85,28 +117,28 @@ void UCtcPerformanceMonitoringSubsystem::OnTick(float DeltaTime)
 	const float CurrentAverage = Algo::Accumulate(RecentFrames, 0.0f) / RecentFrames.Num();
 	const bool bLowFramerate = CurrentAverage < Settings->LowFpsAverageThreshold;
 
-	if (AnomalyStart)
+	if (LowFPSStartTime)
 	{
-		const FTimespan TimePassed = FDateTime::UtcNow() - *AnomalyStart;
+		const FTimespan TimePassed = FDateTime::UtcNow() - *LowFPSStartTime;
 		const double SecondsPassed = TimePassed.GetTotalSeconds();
 
 		if (!bLowFramerate)
 		{
 			UE_LOG(LogCtcMetrics, Display, TEXT("Low framerate recovered. DurationSeconds=%s"), *LexToString(SecondsPassed));
-			AnomalyStart.Reset();
+			LowFPSStartTime.Reset();
 		}
 		else if (SecondsPassed >= Settings->LowFpsDurationThreshold)
 		{
 			UE_LOG(LogCtcMetrics, Display, TEXT("Low framerate duration threshold reached. DurationSeconds=%s"), *LexToString(SecondsPassed));
-			AnomalyStart.Reset();
+			LowFPSStartTime.Reset();
 
-			OnAnomalyDetected();
+			OnLowFPSDetected(CurrentAverage, SecondsPassed);
 		}
 	}
 	else if (bLowFramerate)
 	{
 		UE_LOG(LogCtcMetrics, Display, TEXT("Low framerate anomaly window started."));
-		AnomalyStart = FDateTime::UtcNow();
+		LowFPSStartTime = FDateTime::UtcNow();
 	}
 }
 
@@ -122,7 +154,7 @@ void UCtcPerformanceMonitoringSubsystem::OnDebugTick(float DeltaTime)
 	const TOptional<float> CurrentAverage = !RecentFrames.IsEmpty() ? Algo::Accumulate(RecentFrames, 0.0f) / RecentFrames.Num() : 0.0f;
 	const FString CurrentAverageValue = CurrentAverage ? *LexToString(*CurrentAverage) : TEXT("-");
 
-	const TOptional<FTimespan> TimeSinceAnomaly = AnomalyStart ? FDateTime::UtcNow() - *AnomalyStart : TOptional<FTimespan>();
+	const TOptional<FTimespan> TimeSinceAnomaly = LowFPSStartTime ? FDateTime::UtcNow() - *LowFPSStartTime : TOptional<FTimespan>();
 	const FString TimeSinceAnomalyString = FString::Printf(TEXT("%f/%f"), TimeSinceAnomaly ? TimeSinceAnomaly->GetTotalSeconds() : 0.0f, Settings->LowFpsDurationThreshold);
 
 	TArray<FString> DebugFlags;
@@ -153,27 +185,39 @@ UWorld* UCtcPerformanceMonitoringSubsystem::GetTickableGameObjectWorld() const
 	return CastToCloudSharedHelpers::GetCurrentWorld();
 }
 
-void UCtcPerformanceMonitoringSubsystem::OnAnomalyDetected()
+void UCtcPerformanceMonitoringSubsystem::OnHitchDetected(EFrameHitchType Type, float Duration)
 {
-	const FString TraceId = FApp::GetSessionId().ToString() + TEXT("_") + LexToString(NumAnomaliesRecorded++);
+	UE_LOG(LogCtcMetrics, Display, TEXT("Hitch detected. Type:%s Duration: %s"), *LexToString(Type), *LexToString(Duration));
+
+	TArray<FAnalyticsEventAttribute> Attributes;
+	Attributes.Emplace(TEXT("reason"), TEXT("Hitch detected"));
+	Attributes.Emplace(TEXT("hitch.type"), LexToString(Type));
+	Attributes.Emplace(TEXT("hitch.duration"), Duration);
+
+	RecordBadPerformance(Attributes);
+}
+
+void UCtcPerformanceMonitoringSubsystem::OnLowFPSDetected(float Average, float Duration)
+{
+	UE_LOG(LogCtcMetrics, Display, TEXT("Low FPS created. Average:%s Duration: %s"), *LexToString(Average), *LexToString(Duration));
+
+	TArray<FAnalyticsEventAttribute> Attributes;
+	Attributes.Emplace(TEXT("reason"), TEXT("Low FPS"));
+	Attributes.Emplace(TEXT("lowfps.average"), Average);
+	Attributes.Emplace(TEXT("lowfps.duration"), Duration);
+
+	RecordBadPerformance(Attributes);
+}
+
+void UCtcPerformanceMonitoringSubsystem::RecordBadPerformance(TArray<FAnalyticsEventAttribute> Attributes)
+{
+	const FString TraceId = FApp::GetSessionId().ToString() + TEXT("_") + LexToString(BadPerformanceReportsCount++);
 
 	CastToCloudMetricsTraceHelpers::WriteAndUploadTrace(TraceId);
 
-	TOptional<FTransform> PlayerTransform = {};
-	if (const APlayerController* LocalController = CastToCloudSharedHelpers::GetFirstLocalPlayerController())
-	{
-		if (const APawn* PlayerPawn = LocalController->GetPawn())
-		{
-			PlayerTransform = PlayerPawn->GetActorTransform();
-		}
-		else if (const APlayerCameraManager* CameraManager = LocalController->PlayerCameraManager)
-		{
-			PlayerTransform = FTransform(CameraManager->GetCameraRotation(), CameraManager->GetCameraLocation());
-		}
-	}
-
-	TArray<FAnalyticsEventAttribute> Attributes;
 	Attributes.Emplace(TEXT("trace_id"), TraceId);
 	// TODO the event above should also contain the upscaling applied if any or "native"
-	UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(TEXT("Trace"), PlayerTransform, Attributes);
+	TOptional<FTransform> LocationContext = CastToCloudSharedHelpers::GetAutoTransformContext();
+	//TODO: Use the new helper above everywhere. Ideally when we transition the analytics thing into a subsystem.
+	UCtcAnalyticsBPFL::RecordEventWithOptionalTransform(TEXT("Trace"), LocationContext, Attributes);
 }
