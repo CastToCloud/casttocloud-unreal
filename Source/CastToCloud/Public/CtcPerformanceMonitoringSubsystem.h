@@ -3,8 +3,7 @@
 #pragma once
 
 #include <Subsystems/GameInstanceSubsystem.h>
-
-#include "CtcSharedTickable.h"
+#include <Tickable.h>
 
 #include "CtcPerformanceMonitoringSubsystem.generated.h"
 
@@ -15,7 +14,7 @@ struct FAnalyticsEventAttribute;
  *
  */
 UCLASS()
-class CASTTOCLOUD_API UCtcPerformanceMonitoringSubsystem : public UGameInstanceSubsystem, public FTickableWithDebug
+class CASTTOCLOUD_API UCtcPerformanceMonitoringSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
 {
 	GENERATED_BODY()
 
@@ -28,13 +27,15 @@ private:
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	// ~End UGameInstanceSubsystem interface
 
-	// FTickableWithDebug interface
-	virtual void OnTick(float DeltaTime) override;
-	virtual void OnDebugTick(float DeltaTime) override;
+	// FTickableGameObject interface
+	virtual void Tick(float DeltaTime) override;
 	virtual ETickableTickType GetTickableTickType() const override;
 	virtual TStatId GetStatId() const override;
 	virtual UWorld* GetTickableGameObjectWorld() const override;
-	// ~FTickableWithDebug interface
+	// ~FTickableGameObject interface
+
+	void TickLowFPSDetection();
+	void TickDebug();
 
 	void OnHitchDetected(EFrameHitchType Type, float Duration);
 	void OnLowFPSDetected(float Average, float Duration);

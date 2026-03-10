@@ -91,7 +91,29 @@ bool UCtcPerformanceMonitoringSubsystem::ShouldCreateSubsystem(UObject* Outer) c
 	return Settings && Settings->TrackingEnabled.IsCurrentConfigurationAllowed();
 }
 
-void UCtcPerformanceMonitoringSubsystem::OnTick(float DeltaTime)
+void UCtcPerformanceMonitoringSubsystem::Tick(float DeltaTime)
+{
+	TickLowFPSDetection();
+	TickDebug();
+}
+
+ETickableTickType UCtcPerformanceMonitoringSubsystem::GetTickableTickType() const
+{
+	const bool bIsCDO = HasAnyFlags(RF_ClassDefaultObject);
+	return !bIsCDO ? ETickableTickType::Always : ETickableTickType::Never;
+}
+
+TStatId UCtcPerformanceMonitoringSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UCtcPerformanceMonitoringSubsystem, STATGROUP_Tickables);
+}
+
+UWorld* UCtcPerformanceMonitoringSubsystem::GetTickableGameObjectWorld() const
+{
+	return CastToCloudSharedHelpers::GetCurrentWorld();
+}
+
+void UCtcPerformanceMonitoringSubsystem::TickLowFPSDetection()
 {
 	if (!FApp::HasFocus())
 	{
@@ -142,7 +164,7 @@ void UCtcPerformanceMonitoringSubsystem::OnTick(float DeltaTime)
 	}
 }
 
-void UCtcPerformanceMonitoringSubsystem::OnDebugTick(float DeltaTime)
+void UCtcPerformanceMonitoringSubsystem::TickDebug()
 {
 	if (!CVarCtcPerformanceMonitoringPrintDebugFlags.GetValueOnAnyThread())
 	{
@@ -167,22 +189,6 @@ void UCtcPerformanceMonitoringSubsystem::OnDebugTick(float DeltaTime)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Black, *DebugFlag, false);
 	}
-}
-
-ETickableTickType UCtcPerformanceMonitoringSubsystem::GetTickableTickType() const
-{
-	const bool bIsCDO = HasAnyFlags(RF_ClassDefaultObject);
-	return !bIsCDO ? ETickableTickType::Always : ETickableTickType::Never;
-}
-
-TStatId UCtcPerformanceMonitoringSubsystem::GetStatId() const
-{
-	RETURN_QUICK_DECLARE_CYCLE_STAT(UCtcPerformanceMonitoringSubsystem, STATGROUP_Tickables);
-}
-
-UWorld* UCtcPerformanceMonitoringSubsystem::GetTickableGameObjectWorld() const
-{
-	return CastToCloudSharedHelpers::GetCurrentWorld();
 }
 
 void UCtcPerformanceMonitoringSubsystem::OnHitchDetected(EFrameHitchType Type, float Duration)
