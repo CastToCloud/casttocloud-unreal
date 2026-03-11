@@ -18,6 +18,8 @@ public class CastToCloudMetricsEditor : ModuleRules
 				"Json",
 				"JsonUtilities",
 				"TargetPlatform",
+				"TraceAnalysis",
+				"TraceServices",
 				"UnrealEd",
 
 				"CastToCloudShared",
