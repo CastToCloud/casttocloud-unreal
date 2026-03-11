@@ -4,8 +4,14 @@
 
 #include "Commandlets/IChunkDataGenerator.h"
 #include "Cooker/MPCollector.h"
+#include "HAL/FileManager.h"
 #include "HAL/PlatformTime.h"
 #include "Interfaces/ITargetPlatform.h"
+#include "Misc/DateTime.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Serialization/JsonSerializer.h"
+#include "Serialization/JsonWriter.h"
 #include "Templates/RefCounting.h"
 #include "Templates/SharedPointer.h"
 #include "Templates/UniquePtr.h"
@@ -19,6 +25,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogCastToCloudMetricsEditor, Log, All);
 namespace
 {
 	constexpr double CookHeartbeatIntervalSeconds = 30.0;
+	constexpr int32 TraceProcessId = 1;
 	bool GCastToCloudChunkFactoryRegistered = false;
 
 	const TCHAR* BoolToString(const bool bValue)
@@ -159,6 +166,11 @@ namespace
 		return FString::Printf(TEXT("%s@%s"), *PackageName, TargetFilename);
 	}
 
+	int64 SecondsToTraceMicroseconds(const double Seconds)
+	{
+		return static_cast<int64>(FMath::Max(0.0, Seconds) * 1000.0 * 1000.0);
+	}
+
 	FString DescribeCookSession(UE::Cook::ICookInfo& CookInfo)
 	{
 		FString Summary = FString::Printf(
@@ -190,6 +202,32 @@ namespace
 
 		return Summary;
 	}
+
+	struct FCtcActivePackageTraceSpan
+	{
+		FString PackageName;
+		FString PlatformName;
+		FString TargetFilename;
+		FString Instigator;
+		FString InstigatorChain;
+		FString CookType;
+		bool bProceduralSave = false;
+		double StartSeconds = 0.0;
+	};
+
+	struct FCtcCompletedPackageTraceSpan
+	{
+		FString PackageName;
+		FString PlatformName;
+		FString TargetFilename;
+		FString Instigator;
+		FString InstigatorChain;
+		FString CookType;
+		bool bProceduralSave = false;
+		int64 TimestampUs = 0;
+		int64 DurationUs = 0;
+		int32 ThreadId = 0;
+	};
 
 	class FCtcCookChunkDataGenerator final : public IChunkDataGenerator
 	{
@@ -402,7 +440,8 @@ namespace
 			}
 
 			MpCollector.SafeRelease();
-			FlushActivePackageSaves(TEXT("ModuleShutdown"));
+			FlushActivePackageSpans(TEXT("ModuleShutdown"));
+			ResetTraceSession();
 
 			ActiveCookInfo = nullptr;
 			bCookActive = false;
@@ -431,7 +470,7 @@ namespace
 				Display,
 				TEXT("[CookHeartbeat] cookComplete=%s trackedPackageSaves=%d"),
 				BoolToString(bCookComplete),
-				ActivePackageSaveStartTimes.Num()
+				ActivePackageSaveSpans.Num()
 			);
 
 			HeartbeatAccumulatorSeconds = 0.0;
@@ -462,6 +501,9 @@ namespace
 			HeartbeatAccumulatorSeconds = 0.0;
 			LastCookedPackagesCount = INDEX_NONE;
 			LastCookPendingCount = INDEX_NONE;
+			ResetTraceSession();
+			SessionStartSeconds = FPlatformTime::Seconds();
+			CurrentCookSessionSummary = DescribeCookSession(CookInfo);
 
 			if (!MpCollector.IsValid())
 			{
@@ -474,21 +516,23 @@ namespace
 				LogCastToCloudMetricsEditor,
 				Display,
 				TEXT("[CookSessionStart] %s"),
-				*DescribeCookSession(CookInfo)
+				*CurrentCookSessionSummary
 			);
 		}
 
 		void HandleCookFinished(UE::Cook::ICookInfo& CookInfo)
 		{
+			WriteTraceFile();
+
 			UE_LOG(
 				LogCastToCloudMetricsEditor,
 				Display,
 				TEXT("[CookSessionEnd] %s trackedPackageSaves=%d"),
 				*DescribeCookSession(CookInfo),
-				ActivePackageSaveStartTimes.Num()
+				ActivePackageSaveSpans.Num()
 			);
 
-			FlushActivePackageSaves(TEXT("CookFinished"));
+			FlushActivePackageSpans(TEXT("CookFinished"));
 
 			if (MpCollector.IsValid())
 			{
@@ -501,6 +545,7 @@ namespace
 			HeartbeatAccumulatorSeconds = 0.0;
 			LastCookedPackagesCount = INDEX_NONE;
 			LastCookPendingCount = INDEX_NONE;
+			ResetTraceSession();
 		}
 
 		void HandleCookUpdateDisplay(UE::Cook::ICookInfo& CookInfo, int32 CookedPackagesCount, int32 CookPendingCount)
@@ -563,7 +608,7 @@ namespace
 			const FString PackageKey = BuildCookPackageKey(PackageName, SaveContext.GetTargetFilename());
 			const double NowSeconds = FPlatformTime::Seconds();
 
-			if (ActivePackageSaveStartTimes.Contains(PackageKey))
+			if (ActivePackageSaveSpans.Contains(PackageKey))
 			{
 				UE_LOG(
 					LogCastToCloudMetricsEditor,
@@ -573,8 +618,6 @@ namespace
 					*GetTargetPlatformName(SaveContext.GetTargetPlatform())
 				);
 			}
-
-			ActivePackageSaveStartTimes.Add(PackageKey, NowSeconds);
 
 			FString Instigator = TEXT("Unavailable");
 			FString InstigatorChain = TEXT("Unavailable");
@@ -594,6 +637,16 @@ namespace
 					InstigatorChain = Instigator;
 				}
 			}
+
+			FCtcActivePackageTraceSpan& ActiveSpan = ActivePackageSaveSpans.FindOrAdd(PackageKey);
+			ActiveSpan.PackageName = PackageName;
+			ActiveSpan.PlatformName = GetTargetPlatformName(SaveContext.GetTargetPlatform());
+			ActiveSpan.TargetFilename = SaveContext.GetTargetFilename();
+			ActiveSpan.Instigator = Instigator;
+			ActiveSpan.InstigatorChain = InstigatorChain;
+			ActiveSpan.CookType = CookTypeToString(SaveContext.GetCookType());
+			ActiveSpan.bProceduralSave = SaveContext.IsProceduralSave();
+			ActiveSpan.StartSeconds = NowSeconds;
 
 			UE_LOG(
 				LogCastToCloudMetricsEditor,
@@ -620,10 +673,25 @@ namespace
 			const FString PackageKey = BuildCookPackageKey(PackageName, *Filename);
 
 			double DurationMilliseconds = -1.0;
-			if (const double* StartTimeSeconds = ActivePackageSaveStartTimes.Find(PackageKey))
+			if (FCtcActivePackageTraceSpan* ActiveSpan = ActivePackageSaveSpans.Find(PackageKey))
 			{
-				DurationMilliseconds = (FPlatformTime::Seconds() - *StartTimeSeconds) * 1000.0;
-				ActivePackageSaveStartTimes.Remove(PackageKey);
+				const double EndSeconds = FPlatformTime::Seconds();
+				const double TraceSessionReferenceSeconds = SessionStartSeconds > 0.0 ? SessionStartSeconds : ActiveSpan->StartSeconds;
+				DurationMilliseconds = (EndSeconds - ActiveSpan->StartSeconds) * 1000.0;
+
+				FCtcCompletedPackageTraceSpan& CompletedSpan = CompletedPackageTraceSpans.AddDefaulted_GetRef();
+				CompletedSpan.PackageName = ActiveSpan->PackageName;
+				CompletedSpan.PlatformName = ActiveSpan->PlatformName;
+				CompletedSpan.TargetFilename = ActiveSpan->TargetFilename;
+				CompletedSpan.Instigator = ActiveSpan->Instigator;
+				CompletedSpan.InstigatorChain = ActiveSpan->InstigatorChain;
+				CompletedSpan.CookType = ActiveSpan->CookType;
+				CompletedSpan.bProceduralSave = ActiveSpan->bProceduralSave;
+				CompletedSpan.TimestampUs = SecondsToTraceMicroseconds(ActiveSpan->StartSeconds - TraceSessionReferenceSeconds);
+				CompletedSpan.DurationUs = SecondsToTraceMicroseconds(EndSeconds - ActiveSpan->StartSeconds);
+				CompletedSpan.ThreadId = GetOrAddTraceThreadId(ActiveSpan->PlatformName);
+
+				ActivePackageSaveSpans.Remove(PackageKey);
 			}
 
 			UE_LOG(
@@ -639,9 +707,9 @@ namespace
 			);
 		}
 
-		void FlushActivePackageSaves(const TCHAR* Reason)
+		void FlushActivePackageSpans(const TCHAR* Reason)
 		{
-			if (ActivePackageSaveStartTimes.IsEmpty())
+			if (ActivePackageSaveSpans.IsEmpty())
 			{
 				return;
 			}
@@ -651,11 +719,11 @@ namespace
 				Display,
 				TEXT("[PackageCookUnpairedStartSummary] reason=%s count=%d"),
 				Reason,
-				ActivePackageSaveStartTimes.Num()
+				ActivePackageSaveSpans.Num()
 			);
 
 			int32 SampleCount = 0;
-			for (const TPair<FString, double>& ActiveSave : ActivePackageSaveStartTimes)
+			for (const TPair<FString, FCtcActivePackageTraceSpan>& ActiveSave : ActivePackageSaveSpans)
 			{
 				if (SampleCount >= 5)
 				{
@@ -668,13 +736,158 @@ namespace
 					TEXT("[PackageCookUnpairedStartSample] reason=%s packageKey=%s ageMs=%.2f"),
 					Reason,
 					*ActiveSave.Key,
-					(FPlatformTime::Seconds() - ActiveSave.Value) * 1000.0
+					(FPlatformTime::Seconds() - ActiveSave.Value.StartSeconds) * 1000.0
 				);
 
 				++SampleCount;
 			}
 
-			ActivePackageSaveStartTimes.Empty();
+			ActivePackageSaveSpans.Empty();
+		}
+
+		int32 GetOrAddTraceThreadId(const FString& PlatformName)
+		{
+			if (const int32* ExistingThreadId = TraceThreadIds.Find(PlatformName))
+			{
+				return *ExistingThreadId;
+			}
+
+			const int32 NewThreadId = NextTraceThreadId++;
+			TraceThreadIds.Add(PlatformName, NewThreadId);
+			return NewThreadId;
+		}
+
+		void WriteTraceFile()
+		{
+			if (CompletedPackageTraceSpans.IsEmpty())
+			{
+				UE_LOG(
+					LogCastToCloudMetricsEditor,
+					Display,
+					TEXT("[CookTraceWriteSkipped] reason=NoCompletedPackageSpans")
+				);
+				return;
+			}
+
+			CompletedPackageTraceSpans.Sort(
+				[](const FCtcCompletedPackageTraceSpan& Left, const FCtcCompletedPackageTraceSpan& Right)
+				{
+					if (Left.TimestampUs != Right.TimestampUs)
+					{
+						return Left.TimestampUs < Right.TimestampUs;
+					}
+
+					if (Left.ThreadId != Right.ThreadId)
+					{
+						return Left.ThreadId < Right.ThreadId;
+					}
+
+					return Left.PackageName < Right.PackageName;
+				}
+			);
+
+			const FString TraceDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("CastToCloud"), TEXT("CookTraces"));
+			IFileManager::Get().MakeDirectory(*TraceDirectory, true);
+
+			const FString Timestamp = FDateTime::UtcNow().ToString(TEXT("%Y%m%d-%H%M%S"));
+			const FString TraceFilename = FString::Printf(TEXT("CookTrace-%s-%03d.json"), *Timestamp, ++TraceFileSequence);
+			const FString TracePath = FPaths::Combine(TraceDirectory, TraceFilename);
+
+			FString TraceJson;
+			TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&TraceJson);
+
+			Writer->WriteObjectStart();
+			Writer->WriteValue(TEXT("displayTimeUnit"), TEXT("ms"));
+			Writer->WriteArrayStart(TEXT("traceEvents"));
+
+			Writer->WriteObjectStart();
+			Writer->WriteValue(TEXT("name"), TEXT("process_name"));
+			Writer->WriteValue(TEXT("ph"), TEXT("M"));
+			Writer->WriteValue(TEXT("pid"), TraceProcessId);
+			Writer->WriteValue(TEXT("tid"), 0);
+			Writer->WriteObjectStart(TEXT("args"));
+			Writer->WriteValue(TEXT("name"), TEXT("CastToCloud Cook"));
+			Writer->WriteObjectEnd();
+			Writer->WriteObjectEnd();
+
+			for (const TPair<FString, int32>& ThreadName : TraceThreadIds)
+			{
+				Writer->WriteObjectStart();
+				Writer->WriteValue(TEXT("name"), TEXT("thread_name"));
+				Writer->WriteValue(TEXT("ph"), TEXT("M"));
+				Writer->WriteValue(TEXT("pid"), TraceProcessId);
+				Writer->WriteValue(TEXT("tid"), ThreadName.Value);
+				Writer->WriteObjectStart(TEXT("args"));
+				Writer->WriteValue(TEXT("name"), ThreadName.Key);
+				Writer->WriteObjectEnd();
+				Writer->WriteObjectEnd();
+			}
+
+			for (const FCtcCompletedPackageTraceSpan& CompletedSpan : CompletedPackageTraceSpans)
+			{
+				Writer->WriteObjectStart();
+				Writer->WriteValue(TEXT("name"), TEXT("PackageCook"));
+				Writer->WriteValue(TEXT("cat"), TEXT("cook"));
+				Writer->WriteValue(TEXT("ph"), TEXT("X"));
+				Writer->WriteValue(TEXT("pid"), TraceProcessId);
+				Writer->WriteValue(TEXT("tid"), CompletedSpan.ThreadId);
+				Writer->WriteValue(TEXT("ts"), CompletedSpan.TimestampUs);
+				Writer->WriteValue(TEXT("dur"), CompletedSpan.DurationUs);
+				Writer->WriteObjectStart(TEXT("args"));
+				Writer->WriteValue(TEXT("package"), CompletedSpan.PackageName);
+				Writer->WriteValue(TEXT("platform"), CompletedSpan.PlatformName);
+				Writer->WriteValue(TEXT("target"), CompletedSpan.TargetFilename);
+				Writer->WriteValue(TEXT("cookType"), CompletedSpan.CookType);
+				Writer->WriteValue(TEXT("procedural"), CompletedSpan.bProceduralSave);
+				Writer->WriteValue(TEXT("instigator"), CompletedSpan.Instigator);
+				Writer->WriteValue(TEXT("instigatorChain"), CompletedSpan.InstigatorChain);
+				if (!CurrentCookSessionSummary.IsEmpty())
+				{
+					Writer->WriteValue(TEXT("session"), CurrentCookSessionSummary);
+				}
+				Writer->WriteObjectEnd();
+				Writer->WriteObjectEnd();
+			}
+
+			Writer->WriteArrayEnd();
+			Writer->WriteObjectEnd();
+			Writer->Close();
+
+			if (!FFileHelper::SaveStringToFile(
+				TraceJson,
+				*TracePath,
+				FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM
+			))
+			{
+				UE_LOG(
+					LogCastToCloudMetricsEditor,
+					Warning,
+					TEXT("[CookTraceWriteFailed] path=%s spans=%d"),
+					*TracePath,
+					CompletedPackageTraceSpans.Num()
+				);
+				return;
+			}
+
+			LastTraceOutputPath = TracePath;
+
+			UE_LOG(
+				LogCastToCloudMetricsEditor,
+				Display,
+				TEXT("[CookTraceWrite] path=%s spans=%d"),
+				*TracePath,
+				CompletedPackageTraceSpans.Num()
+			);
+		}
+
+		void ResetTraceSession()
+		{
+			ActivePackageSaveSpans.Empty();
+			CompletedPackageTraceSpans.Empty();
+			TraceThreadIds.Empty();
+			CurrentCookSessionSummary.Empty();
+			SessionStartSeconds = 0.0;
+			NextTraceThreadId = 1;
 		}
 
 		void RegisterChunkGeneratorFactory()
@@ -705,10 +918,17 @@ namespace
 
 		UE::Cook::ICookInfo* ActiveCookInfo = nullptr;
 		TRefCountPtr<FCtcCookMpCollector> MpCollector;
-		TMap<FString, double> ActivePackageSaveStartTimes;
+		TMap<FString, FCtcActivePackageTraceSpan> ActivePackageSaveSpans;
+		TArray<FCtcCompletedPackageTraceSpan> CompletedPackageTraceSpans;
+		TMap<FString, int32> TraceThreadIds;
+		FString CurrentCookSessionSummary;
+		FString LastTraceOutputPath;
+		double SessionStartSeconds = 0.0;
 		double HeartbeatAccumulatorSeconds = 0.0;
 		int32 LastCookedPackagesCount = INDEX_NONE;
 		int32 LastCookPendingCount = INDEX_NONE;
+		int32 NextTraceThreadId = 1;
+		int32 TraceFileSequence = 0;
 		bool bCookActive = false;
 		bool bLoggedCookCompleteTick = false;
 	};
