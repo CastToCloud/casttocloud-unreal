@@ -17,6 +17,8 @@ public class CastToCloudMetricsEditor : ModuleRules
 				"HTTPServer",
 				"Json",
 				"JsonUtilities",
+				"TargetPlatform",
+				"UnrealEd",
 
 				"CastToCloudShared",
 				"CastToCloudSharedEditor",
