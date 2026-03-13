@@ -2,12 +2,10 @@
 
 #include "CtcMetricsEditorModule.h"
 
-#include "AssetCompilingManager.h"
 #include "Commandlets/IChunkDataGenerator.h"
 #include "Cooker/MPCollector.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformTime.h"
-#include "IAssetCompilingManager.h"
 #include "Interfaces/ITargetPlatform.h"
 #include "Misc/CoreDelegates.h"
 #include "Misc/DateTime.h"
@@ -181,36 +179,6 @@ namespace
 		return bSynchronous ? TEXT("Sync") : TEXT("Async");
 	}
 
-	const TCHAR* ModuleChangeReasonToString(const EModuleChangeReason Reason)
-	{
-		switch (Reason)
-		{
-		case EModuleChangeReason::ModuleLoaded:
-			return TEXT("ModuleLoaded");
-		case EModuleChangeReason::ModuleUnloaded:
-			return TEXT("ModuleUnloaded");
-		case EModuleChangeReason::PluginDirectoryChanged:
-			return TEXT("PluginDirectoryChanged");
-		default:
-			return TEXT("Unknown");
-		}
-	}
-
-	const TCHAR* CompiledInStatusToString(const ECompiledInUObjectsRegisteredStatus Status)
-	{
-		switch (Status)
-		{
-		case ECompiledInUObjectsRegisteredStatus::Delayed:
-			return TEXT("Delayed");
-		case ECompiledInUObjectsRegisteredStatus::PreCDO:
-			return TEXT("PreCDO");
-		case ECompiledInUObjectsRegisteredStatus::PostCDO:
-			return TEXT("PostCDO");
-		default:
-			return TEXT("Unknown");
-		}
-	}
-
 	FString DescribeCookSession(UE::Cook::ICookInfo& CookInfo)
 	{
 		FString Summary = FString::Printf(
@@ -269,43 +237,6 @@ namespace
 		int32 ThreadId = 0;
 	};
 
-	struct FCtcLoadBatchTraceEvent
-	{
-		FString PackagesSample;
-		int64 TimestampUs = 0;
-		int32 ThreadId = 0;
-		int32 PackageCount = 0;
-		int32 RecursiveDepth = 0;
-		bool bSynchronous = false;
-	};
-
-	struct FCtcIdleTraceEvent
-	{
-		FString Name;
-		int64 TimestampUs = 0;
-		int32 ThreadId = 0;
-		int32 QueueCount = 0;
-		int32 PendingCookedPlatformData = 0;
-		bool bExpectedDueToSlowBuildOperations = false;
-	};
-
-	struct FCtcBlockedObjectTraceEvent
-	{
-		FString ObjectName;
-		FString ObjectClass;
-		FString PackageName;
-		int64 TimestampUs = 0;
-		int32 ThreadId = 0;
-	};
-
-	struct FCtcProgressTraceEvent
-	{
-		int64 TimestampUs = 0;
-		int32 ThreadId = 0;
-		int32 CookedPackagesCount = 0;
-		int32 CookPendingCount = 0;
-	};
-
 	struct FCtcActivePackageLoadTraceSpan
 	{
 		FString PackageName;
@@ -322,69 +253,6 @@ namespace
 		int64 DurationUs = 0;
 		int32 ThreadId = 0;
 		int32 RecursiveDepth = 0;
-	};
-
-	struct FCtcActivePackageCompileTraceSpan
-	{
-		FString PackageName;
-		double StartSeconds = 0.0;
-	};
-
-	struct FCtcCompletedPackageCompileTraceSpan
-	{
-		FString PackageName;
-		int64 TimestampUs = 0;
-		int64 DurationUs = 0;
-		int32 ThreadId = 0;
-	};
-
-	struct FCtcActiveModuleTraceSpan
-	{
-		FString ModuleName;
-		bool bCanProcessLoadedObjects = false;
-		double StartSeconds = 0.0;
-	};
-
-	struct FCtcCompletedModuleTraceSpan
-	{
-		FString ModuleName;
-		bool bCanProcessLoadedObjects = false;
-		int64 TimestampUs = 0;
-		int64 DurationUs = 0;
-		int32 ThreadId = 0;
-	};
-
-	struct FCtcModuleTraceEvent
-	{
-		FString Name;
-		FString ModuleName;
-		FString Detail;
-		int64 TimestampUs = 0;
-		int32 ThreadId = 0;
-		bool bCanProcessLoadedObjects = false;
-	};
-
-	struct FCtcAssetCompileTraceEvent
-	{
-		FString AssetsSample;
-		int64 TimestampUs = 0;
-		int32 ThreadId = 0;
-		int32 AssetCount = 0;
-	};
-
-	struct FCtcCounterTraceEvent
-	{
-		FString Name;
-		int64 TimestampUs = 0;
-		int32 ThreadId = 0;
-		int32 Value = 0;
-	};
-
-	struct FCtcAsyncLoadingFlushTraceEvent
-	{
-		int64 TimestampUs = 0;
-		int32 ThreadId = 0;
-		int32 PendingAsyncPackages = 0;
 	};
 
 	class FCtcCookChunkDataGenerator final : public IChunkDataGenerator
@@ -537,18 +405,8 @@ namespace
 		{
 			CookStartedHandle = UE::Cook::FDelegates::CookStarted.AddRaw(this, &FCtcCookObserver::HandleCookStarted);
 			CookFinishedHandle = UE::Cook::FDelegates::CookFinished.AddRaw(this, &FCtcCookObserver::HandleCookFinished);
-			CookUpdateDisplayHandle = UE::Cook::FDelegates::CookUpdateDisplay.AddRaw(this, &FCtcCookObserver::HandleCookUpdateDisplay);
-			CookSaveIdleHandle = UE::Cook::FDelegates::CookSaveIdle.AddRaw(this, &FCtcCookObserver::HandleCookSaveIdle);
-			CookLoadIdleHandle = UE::Cook::FDelegates::CookLoadIdle.AddRaw(this, &FCtcCookObserver::HandleCookLoadIdle);
-			PackageBlockedHandle = UE::Cook::FDelegates::PackageBlocked.AddRaw(this, &FCtcCookObserver::HandlePackageBlocked);
 			SyncLoadPackageHandle = FCoreDelegates::OnSyncLoadPackage.AddRaw(this, &FCtcCookObserver::HandleSyncLoadPackage);
 			AsyncLoadPackageHandle = FCoreDelegates::GetOnAsyncLoadPackage().AddRaw(this, &FCtcCookObserver::HandleAsyncLoadPackage);
-			AsyncLoadingFlushHandle = FCoreDelegates::OnAsyncLoadingFlush.AddRaw(this, &FCtcCookObserver::HandleAsyncLoadingFlush);
-			AssetCompileScopeHandle = FAssetCompilingManager::Get().OnPackageScopeEvent().AddRaw(this, &FCtcCookObserver::HandleAssetCompilePackageScope);
-			AssetPostCompileHandle = FAssetCompilingManager::Get().OnAssetPostCompileEvent().AddRaw(this, &FCtcCookObserver::HandleAssetPostCompile);
-			ModulesChangedHandle = FModuleManager::Get().OnModulesChanged().AddRaw(this, &FCtcCookObserver::HandleModulesChanged);
-			ProcessLoadedObjectsHandle = FModuleManager::Get().OnProcessLoadedObjectsCallback().AddRaw(this, &FCtcCookObserver::HandleProcessLoadedObjects);
-			CompiledInObjectsHandle = FCoreUObjectDelegates::CompiledInUObjectsRegisteredDelegate.AddRaw(this, &FCtcCookObserver::HandleCompiledInUObjectsRegistered);
 			PreSavePackageHandle = UPackage::PreSavePackageWithContextEvent.AddRaw(this, &FCtcCookObserver::HandlePreSavePackage);
 			PackageSavedHandle = UPackage::PackageSavedWithContextEvent.AddRaw(this, &FCtcCookObserver::HandlePackageSaved);
 			EndLoadPackageHandle = FCoreUObjectDelegates::OnEndLoadPackage.AddRaw(this, &FCtcCookObserver::HandleEndLoadPackage);
@@ -572,30 +430,6 @@ namespace
 				CookFinishedHandle.Reset();
 			}
 
-			if (CookUpdateDisplayHandle.IsValid())
-			{
-				UE::Cook::FDelegates::CookUpdateDisplay.Remove(CookUpdateDisplayHandle);
-				CookUpdateDisplayHandle.Reset();
-			}
-
-			if (CookSaveIdleHandle.IsValid())
-			{
-				UE::Cook::FDelegates::CookSaveIdle.Remove(CookSaveIdleHandle);
-				CookSaveIdleHandle.Reset();
-			}
-
-			if (CookLoadIdleHandle.IsValid())
-			{
-				UE::Cook::FDelegates::CookLoadIdle.Remove(CookLoadIdleHandle);
-				CookLoadIdleHandle.Reset();
-			}
-
-			if (PackageBlockedHandle.IsValid())
-			{
-				UE::Cook::FDelegates::PackageBlocked.Remove(PackageBlockedHandle);
-				PackageBlockedHandle.Reset();
-			}
-
 			if (SyncLoadPackageHandle.IsValid())
 			{
 				FCoreDelegates::OnSyncLoadPackage.Remove(SyncLoadPackageHandle);
@@ -606,42 +440,6 @@ namespace
 			{
 				FCoreDelegates::GetOnAsyncLoadPackage().Remove(AsyncLoadPackageHandle);
 				AsyncLoadPackageHandle.Reset();
-			}
-
-			if (AsyncLoadingFlushHandle.IsValid())
-			{
-				FCoreDelegates::OnAsyncLoadingFlush.Remove(AsyncLoadingFlushHandle);
-				AsyncLoadingFlushHandle.Reset();
-			}
-
-			if (AssetCompileScopeHandle.IsValid())
-			{
-				FAssetCompilingManager::Get().OnPackageScopeEvent().Remove(AssetCompileScopeHandle);
-				AssetCompileScopeHandle.Reset();
-			}
-
-			if (AssetPostCompileHandle.IsValid())
-			{
-				FAssetCompilingManager::Get().OnAssetPostCompileEvent().Remove(AssetPostCompileHandle);
-				AssetPostCompileHandle.Reset();
-			}
-
-			if (ModulesChangedHandle.IsValid())
-			{
-				FModuleManager::Get().OnModulesChanged().Remove(ModulesChangedHandle);
-				ModulesChangedHandle.Reset();
-			}
-
-			if (ProcessLoadedObjectsHandle.IsValid())
-			{
-				FModuleManager::Get().OnProcessLoadedObjectsCallback().Remove(ProcessLoadedObjectsHandle);
-				ProcessLoadedObjectsHandle.Reset();
-			}
-
-			if (CompiledInObjectsHandle.IsValid())
-			{
-				FCoreUObjectDelegates::CompiledInUObjectsRegisteredDelegate.Remove(CompiledInObjectsHandle);
-				CompiledInObjectsHandle.Reset();
 			}
 
 			if (PreSavePackageHandle.IsValid())
@@ -670,8 +468,6 @@ namespace
 			MpCollector.SafeRelease();
 			FlushActivePackageSpans(TEXT("ModuleShutdown"));
 			FlushActivePackageLoadSpans(TEXT("ModuleShutdown"));
-			FlushActivePackageCompileSpans(TEXT("ModuleShutdown"));
-			FlushActiveModuleLoadSpans(TEXT("ModuleShutdown"));
 			ResetTraceSession();
 
 			ActiveCookInfo = nullptr;
@@ -695,8 +491,6 @@ namespace
 			{
 				return;
 			}
-
-			CaptureAssetCompilingCounters();
 
 			UE_LOG(
 				LogCastToCloudMetricsEditor,
@@ -725,64 +519,6 @@ namespace
 		{
 			const double TraceSessionReferenceSeconds = SessionStartSeconds > 0.0 ? SessionStartSeconds : EventTimeSeconds;
 			return SecondsToTraceMicroseconds(EventTimeSeconds - TraceSessionReferenceSeconds);
-		}
-
-		void CaptureAssetCompilingCounters()
-		{
-			if (!bCookActive)
-			{
-				return;
-			}
-
-			const int64 TimestampUs = GetRelativeTraceTimestampUs(FPlatformTime::Seconds());
-			const int32 ThreadId = GetOrAddTraceThreadId(TEXT("CookCompile"));
-			TSet<FString> ObservedManagerNames;
-
-			for (IAssetCompilingManager* Manager : FAssetCompilingManager::Get().GetRegisteredManagers())
-			{
-				if (Manager == nullptr)
-				{
-					continue;
-				}
-
-				FString ManagerName = Manager->GetAssetTypeName().ToString();
-				if (ManagerName.IsEmpty())
-				{
-					ManagerName = TEXT("Unknown");
-				}
-
-				ObservedManagerNames.Add(ManagerName);
-
-				const int32 RemainingAssets = Manager->GetNumRemainingAssets();
-				const int32* ExistingCount = LastAssetCompileCounts.Find(ManagerName);
-				if (ExistingCount != nullptr && *ExistingCount == RemainingAssets)
-				{
-					continue;
-				}
-
-				LastAssetCompileCounts.Add(ManagerName, RemainingAssets);
-
-				FCtcCounterTraceEvent& CounterEvent = AssetCompileCounterTraceEvents.AddDefaulted_GetRef();
-				CounterEvent.Name = FString::Printf(TEXT("AssetCompileRemaining/%s"), *ManagerName);
-				CounterEvent.TimestampUs = TimestampUs;
-				CounterEvent.ThreadId = ThreadId;
-				CounterEvent.Value = RemainingAssets;
-			}
-
-			for (auto It = LastAssetCompileCounts.CreateIterator(); It; ++It)
-			{
-				if (ObservedManagerNames.Contains(It.Key()))
-				{
-					continue;
-				}
-
-				FCtcCounterTraceEvent& CounterEvent = AssetCompileCounterTraceEvents.AddDefaulted_GetRef();
-				CounterEvent.Name = FString::Printf(TEXT("AssetCompileRemaining/%s"), *It.Key());
-				CounterEvent.TimestampUs = TimestampUs;
-				CounterEvent.ThreadId = ThreadId;
-				CounterEvent.Value = 0;
-				It.RemoveCurrent();
-			}
 		}
 
 		void BeginPackageLoadSpan(const FString& PackageName, const bool bSynchronousRequest)
@@ -854,48 +590,6 @@ namespace
 			ActivePackageLoadSpans.Empty();
 		}
 
-		void FlushActivePackageCompileSpans(const TCHAR* Reason)
-		{
-			if (ActivePackageCompileSpans.IsEmpty())
-			{
-				return;
-			}
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Display,
-				TEXT("[PackageCompileScopeUnpairedSummary] reason=%s count=%d"),
-				Reason,
-				ActivePackageCompileSpans.Num()
-			);
-
-			ActivePackageCompileSpans.Empty();
-		}
-
-		void FlushActiveModuleLoadSpans(const TCHAR* Reason)
-		{
-			int32 ActiveCount = 0;
-			for (const TPair<FString, TArray<FCtcActiveModuleTraceSpan>>& ActiveModule : ActiveModuleLoadSpans)
-			{
-				ActiveCount += ActiveModule.Value.Num();
-			}
-
-			if (ActiveCount == 0)
-			{
-				return;
-			}
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Display,
-				TEXT("[ModuleLoadUnpairedStartSummary] reason=%s count=%d"),
-				Reason,
-				ActiveCount
-			);
-
-			ActiveModuleLoadSpans.Empty();
-		}
-
 		void HandleSyncLoadPackage(const FString& PackageName)
 		{
 			BeginPackageLoadSpan(PackageName, true);
@@ -904,232 +598,6 @@ namespace
 		void HandleAsyncLoadPackage(FStringView PackageName)
 		{
 			BeginPackageLoadSpan(FString(PackageName), false);
-		}
-
-		void HandleAsyncLoadingFlush()
-		{
-			if (!bCookActive)
-			{
-				return;
-			}
-
-			FCtcAsyncLoadingFlushTraceEvent& FlushEvent = AsyncLoadingFlushTraceEvents.AddDefaulted_GetRef();
-			FlushEvent.TimestampUs = GetRelativeTraceTimestampUs(FPlatformTime::Seconds());
-			FlushEvent.ThreadId = GetOrAddTraceThreadId(TEXT("CookLoad"));
-			FlushEvent.PendingAsyncPackages = GetNumAsyncPackages();
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Display,
-				TEXT("[AsyncLoadingFlushStart] pendingAsyncPackages=%d"),
-				FlushEvent.PendingAsyncPackages
-			);
-		}
-
-		void HandleAssetCompilePackageScope(UPackage* Package, bool bEntering)
-		{
-			if (!bCookActive || Package == nullptr)
-			{
-				return;
-			}
-
-			CaptureAssetCompilingCounters();
-
-			const FString PackageName = Package->GetName();
-			if (bEntering)
-			{
-				FCtcActivePackageCompileTraceSpan& ActiveSpan = ActivePackageCompileSpans.FindOrAdd(PackageName);
-				ActiveSpan.PackageName = PackageName;
-				ActiveSpan.StartSeconds = FPlatformTime::Seconds();
-
-				UE_LOG(
-					LogCastToCloudMetricsEditor,
-					Display,
-					TEXT("[PackageCompileScopeStart] package=%s"),
-					*PackageName
-				);
-				return;
-			}
-
-			FCtcActivePackageCompileTraceSpan* ActiveSpan = ActivePackageCompileSpans.Find(PackageName);
-			if (ActiveSpan == nullptr)
-			{
-				return;
-			}
-
-			const double EndSeconds = FPlatformTime::Seconds();
-			FCtcCompletedPackageCompileTraceSpan& CompletedSpan = CompletedPackageCompileTraceSpans.AddDefaulted_GetRef();
-			CompletedSpan.PackageName = ActiveSpan->PackageName;
-			CompletedSpan.TimestampUs = GetRelativeTraceTimestampUs(ActiveSpan->StartSeconds);
-			CompletedSpan.DurationUs = SecondsToTraceMicroseconds(EndSeconds - ActiveSpan->StartSeconds);
-			CompletedSpan.ThreadId = GetOrAddTraceThreadId(TEXT("CookCompile"));
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Display,
-				TEXT("[PackageCompileScopeEnd] package=%s durationMs=%.2f"),
-				*ActiveSpan->PackageName,
-				(EndSeconds - ActiveSpan->StartSeconds) * 1000.0
-			);
-
-			ActivePackageCompileSpans.Remove(PackageName);
-		}
-
-		void HandleAssetPostCompile(const TArray<FAssetCompileData>& CompiledAssets)
-		{
-			if (!bCookActive)
-			{
-				return;
-			}
-
-			CaptureAssetCompilingCounters();
-			if (CompiledAssets.IsEmpty())
-			{
-				return;
-			}
-
-			TArray<FString> AssetNames;
-			AssetNames.Reserve(FMath::Min(CompiledAssets.Num(), 8));
-
-			for (const FAssetCompileData& AssetData : CompiledAssets)
-			{
-				if (AssetNames.Num() >= 8)
-				{
-					break;
-				}
-
-				if (UObject* Asset = AssetData.Asset.Get())
-				{
-					AssetNames.Add(Asset->GetPathName());
-				}
-			}
-
-			FCtcAssetCompileTraceEvent& CompileEvent = AssetCompileTraceEvents.AddDefaulted_GetRef();
-			CompileEvent.TimestampUs = GetRelativeTraceTimestampUs(FPlatformTime::Seconds());
-			CompileEvent.ThreadId = GetOrAddTraceThreadId(TEXT("CookCompile"));
-			CompileEvent.AssetCount = CompiledAssets.Num();
-			CompileEvent.AssetsSample = AssetNames.Num() > 0 ? FString::Join(AssetNames, TEXT(", ")) : TEXT("None");
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Display,
-				TEXT("[AssetCompileComplete] count=%d assets=%s"),
-				CompileEvent.AssetCount,
-				*CompileEvent.AssetsSample
-			);
-		}
-
-		void HandleProcessLoadedObjects(FName ModuleName, bool bCanProcessNewlyLoadedObjects)
-		{
-			if (!bCookActive)
-			{
-				return;
-			}
-
-			const FString ModuleNameString = ModuleName.IsNone() ? TEXT("None") : ModuleName.ToString();
-			FCtcModuleTraceEvent& ModuleEvent = ModuleTraceEvents.AddDefaulted_GetRef();
-			ModuleEvent.Name = TEXT("ProcessLoadedObjects");
-			ModuleEvent.ModuleName = ModuleNameString;
-			ModuleEvent.TimestampUs = GetRelativeTraceTimestampUs(FPlatformTime::Seconds());
-			ModuleEvent.ThreadId = GetOrAddTraceThreadId(TEXT("CookModule"));
-			ModuleEvent.bCanProcessLoadedObjects = bCanProcessNewlyLoadedObjects;
-
-			if (!ModuleName.IsNone())
-			{
-				FCtcActiveModuleTraceSpan& ActiveSpan = ActiveModuleLoadSpans.FindOrAdd(ModuleNameString).AddDefaulted_GetRef();
-				ActiveSpan.ModuleName = ModuleNameString;
-				ActiveSpan.bCanProcessLoadedObjects = bCanProcessNewlyLoadedObjects;
-				ActiveSpan.StartSeconds = FPlatformTime::Seconds();
-			}
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Display,
-				TEXT("[ProcessLoadedObjects] module=%s canProcessLoadedObjects=%s"),
-				*ModuleNameString,
-				BoolToString(bCanProcessNewlyLoadedObjects)
-			);
-		}
-
-		void HandleModulesChanged(FName ModuleName, EModuleChangeReason Reason)
-		{
-			if (!bCookActive)
-			{
-				return;
-			}
-
-			const FString ModuleNameString = ModuleName.IsNone() ? TEXT("None") : ModuleName.ToString();
-			const double NowSeconds = FPlatformTime::Seconds();
-
-			FCtcModuleTraceEvent& ModuleEvent = ModuleTraceEvents.AddDefaulted_GetRef();
-			ModuleEvent.Name = TEXT("ModuleChanged");
-			ModuleEvent.ModuleName = ModuleNameString;
-			ModuleEvent.Detail = ModuleChangeReasonToString(Reason);
-			ModuleEvent.TimestampUs = GetRelativeTraceTimestampUs(NowSeconds);
-			ModuleEvent.ThreadId = GetOrAddTraceThreadId(TEXT("CookModule"));
-
-			if (Reason == EModuleChangeReason::ModuleLoaded)
-			{
-				if (TArray<FCtcActiveModuleTraceSpan>* ActiveSpans = ActiveModuleLoadSpans.Find(ModuleNameString))
-				{
-					if (!ActiveSpans->IsEmpty())
-					{
-						const FCtcActiveModuleTraceSpan ActiveSpan = (*ActiveSpans)[0];
-						ActiveSpans->RemoveAt(0);
-						if (ActiveSpans->IsEmpty())
-						{
-							ActiveModuleLoadSpans.Remove(ModuleNameString);
-						}
-
-						FCtcCompletedModuleTraceSpan& CompletedSpan = CompletedModuleTraceSpans.AddDefaulted_GetRef();
-						CompletedSpan.ModuleName = ActiveSpan.ModuleName;
-						CompletedSpan.bCanProcessLoadedObjects = ActiveSpan.bCanProcessLoadedObjects;
-						CompletedSpan.TimestampUs = GetRelativeTraceTimestampUs(ActiveSpan.StartSeconds);
-						CompletedSpan.DurationUs = SecondsToTraceMicroseconds(NowSeconds - ActiveSpan.StartSeconds);
-						CompletedSpan.ThreadId = GetOrAddTraceThreadId(TEXT("CookModule"));
-
-						UE_LOG(
-							LogCastToCloudMetricsEditor,
-							Display,
-							TEXT("[ModuleLoadEnd] module=%s durationMs=%.2f"),
-							*CompletedSpan.ModuleName,
-							(NowSeconds - ActiveSpan.StartSeconds) * 1000.0
-						);
-					}
-				}
-			}
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Display,
-				TEXT("[ModuleChanged] module=%s reason=%s"),
-				*ModuleNameString,
-				ModuleChangeReasonToString(Reason)
-			);
-		}
-
-		void HandleCompiledInUObjectsRegistered(FName ModuleName, ECompiledInUObjectsRegisteredStatus Status)
-		{
-			if (!bCookActive)
-			{
-				return;
-			}
-
-			const FString ModuleNameString = ModuleName.IsNone() ? TEXT("None") : ModuleName.ToString();
-			FCtcModuleTraceEvent& ModuleEvent = ModuleTraceEvents.AddDefaulted_GetRef();
-			ModuleEvent.Name = TEXT("CompiledInUObjectsRegistered");
-			ModuleEvent.ModuleName = ModuleNameString;
-			ModuleEvent.Detail = CompiledInStatusToString(Status);
-			ModuleEvent.TimestampUs = GetRelativeTraceTimestampUs(FPlatformTime::Seconds());
-			ModuleEvent.ThreadId = GetOrAddTraceThreadId(TEXT("CookModule"));
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Display,
-				TEXT("[CompiledInUObjectsRegistered] module=%s status=%s"),
-				*ModuleNameString,
-				CompiledInStatusToString(Status)
-			);
 		}
 
 		void HandleCookStarted(UE::Cook::ICookInfo& CookInfo)
@@ -1143,19 +611,11 @@ namespace
 			bCookActive = true;
 			bLoggedCookCompleteTick = false;
 			HeartbeatAccumulatorSeconds = 0.0;
-			LastCookedPackagesCount = INDEX_NONE;
-			LastCookPendingCount = INDEX_NONE;
 			ResetTraceSession();
 			SessionStartSeconds = FPlatformTime::Seconds();
 			CurrentCookSessionSummary = DescribeCookSession(CookInfo);
-			GetOrAddTraceThreadId(TEXT("CookMain"));
-			GetOrAddTraceThreadId(TEXT("CookLoad"));
 			GetOrAddTraceThreadId(TEXT("CookLoadSync"));
 			GetOrAddTraceThreadId(TEXT("CookLoadAsync"));
-			GetOrAddTraceThreadId(TEXT("CookCompile"));
-			GetOrAddTraceThreadId(TEXT("CookModule"));
-			GetOrAddTraceThreadId(TEXT("CookWait"));
-			CaptureAssetCompilingCounters();
 
 			if (!MpCollector.IsValid())
 			{
@@ -1175,12 +635,9 @@ namespace
 		void HandleCookFinished(UE::Cook::ICookInfo& CookInfo)
 		{
 			SessionEndSeconds = FPlatformTime::Seconds();
-			CaptureAssetCompilingCounters();
 			const int32 UnpairedPackageSaveCount = ActivePackageSaveSpans.Num();
 			FlushActivePackageSpans(TEXT("CookFinished"));
 			FlushActivePackageLoadSpans(TEXT("CookFinished"));
-			FlushActivePackageCompileSpans(TEXT("CookFinished"));
-			FlushActiveModuleLoadSpans(TEXT("CookFinished"));
 
 			UE_LOG(
 				LogCastToCloudMetricsEditor,
@@ -1199,104 +656,9 @@ namespace
 			bCookActive = false;
 			bLoggedCookCompleteTick = false;
 			HeartbeatAccumulatorSeconds = 0.0;
-			LastCookedPackagesCount = INDEX_NONE;
-			LastCookPendingCount = INDEX_NONE;
 
 			WriteTraceFile();
 			ResetTraceSession();
-		}
-
-		void HandleCookUpdateDisplay(UE::Cook::ICookInfo& CookInfo, int32 CookedPackagesCount, int32 CookPendingCount)
-		{
-			if (CookedPackagesCount == LastCookedPackagesCount && CookPendingCount == LastCookPendingCount)
-			{
-				return;
-			}
-
-			LastCookedPackagesCount = CookedPackagesCount;
-			LastCookPendingCount = CookPendingCount;
-			CaptureAssetCompilingCounters();
-
-			FCtcProgressTraceEvent& ProgressEvent = ProgressTraceEvents.AddDefaulted_GetRef();
-			ProgressEvent.TimestampUs = GetRelativeTraceTimestampUs(FPlatformTime::Seconds());
-			ProgressEvent.ThreadId = GetOrAddTraceThreadId(TEXT("CookMain"));
-			ProgressEvent.CookedPackagesCount = CookedPackagesCount;
-			ProgressEvent.CookPendingCount = CookPendingCount;
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Display,
-				TEXT("[CookProgress] cookType=%s cooked=%d pending=%d"),
-				CookTypeToString(CookInfo.GetCookType()),
-				CookedPackagesCount,
-				CookPendingCount
-			);
-		}
-
-		void HandleCookSaveIdle(
-			UE::Cook::ICookInfo& CookInfo,
-			int32 NumPackagesInSaveQueue,
-			int32 NumPendingCookedPlatformData,
-			bool bExpectedDueToSlowBuildOperations
-		)
-		{
-			CaptureAssetCompilingCounters();
-
-			FCtcIdleTraceEvent& IdleEvent = IdleTraceEvents.AddDefaulted_GetRef();
-			IdleEvent.Name = TEXT("CookSaveIdle");
-			IdleEvent.TimestampUs = GetRelativeTraceTimestampUs(FPlatformTime::Seconds());
-			IdleEvent.ThreadId = GetOrAddTraceThreadId(TEXT("CookWait"));
-			IdleEvent.QueueCount = NumPackagesInSaveQueue;
-			IdleEvent.PendingCookedPlatformData = NumPendingCookedPlatformData;
-			IdleEvent.bExpectedDueToSlowBuildOperations = bExpectedDueToSlowBuildOperations;
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Warning,
-				TEXT("[CookSaveIdle] cookType=%s saveQueue=%d pendingPlatformData=%d expectedSlowBuild=%s"),
-				CookTypeToString(CookInfo.GetCookType()),
-				NumPackagesInSaveQueue,
-				NumPendingCookedPlatformData,
-				BoolToString(bExpectedDueToSlowBuildOperations)
-			);
-		}
-
-		void HandleCookLoadIdle(UE::Cook::ICookInfo& CookInfo, int32 NumPackagesInLoadQueue)
-		{
-			CaptureAssetCompilingCounters();
-
-			FCtcIdleTraceEvent& IdleEvent = IdleTraceEvents.AddDefaulted_GetRef();
-			IdleEvent.Name = TEXT("CookLoadIdle");
-			IdleEvent.TimestampUs = GetRelativeTraceTimestampUs(FPlatformTime::Seconds());
-			IdleEvent.ThreadId = GetOrAddTraceThreadId(TEXT("CookWait"));
-			IdleEvent.QueueCount = NumPackagesInLoadQueue;
-
-			UE_LOG(
-				LogCastToCloudMetricsEditor,
-				Warning,
-				TEXT("[CookLoadIdle] cookType=%s loadQueue=%d"),
-				CookTypeToString(CookInfo.GetCookType()),
-				NumPackagesInLoadQueue
-			);
-		}
-
-		void HandlePackageBlocked(const UObject* Object, FStringBuilderBase& OutDebugInfo)
-		{
-			if (!bCookActive || Object == nullptr)
-			{
-				return;
-			}
-
-			CaptureAssetCompilingCounters();
-
-			FCtcBlockedObjectTraceEvent& BlockedEvent = BlockedObjectTraceEvents.AddDefaulted_GetRef();
-			BlockedEvent.ObjectName = Object->GetFullName();
-			BlockedEvent.ObjectClass = Object->GetClass() != nullptr ? Object->GetClass()->GetName() : TEXT("Unknown");
-			BlockedEvent.PackageName = Object->GetPackage() != nullptr ? Object->GetPackage()->GetName() : TEXT("None");
-			BlockedEvent.TimestampUs = GetRelativeTraceTimestampUs(FPlatformTime::Seconds());
-			BlockedEvent.ThreadId = GetOrAddTraceThreadId(TEXT("CookWait"));
-
-			OutDebugInfo.Append(TEXT("CastToCloudMetrics captured this blocked object for external trace export.\n"));
 		}
 
 		void HandleEndLoadPackage(const FEndLoadPackageContext& Context)
@@ -1307,20 +669,11 @@ namespace
 			}
 
 			const double EndSeconds = FPlatformTime::Seconds();
-			TArray<FString> PackageNames;
-			PackageNames.Reserve(FMath::Min(Context.LoadedPackages.Num(), 8));
-
-			int32 Index = 0;
 			for (UPackage* LoadedPackage : Context.LoadedPackages)
 			{
 				if (LoadedPackage != nullptr)
 				{
 					const FString PackageName = LoadedPackage->GetName();
-					if (Index < 8)
-					{
-						PackageNames.Add(PackageName);
-					}
-
 					if (TArray<FCtcActivePackageLoadTraceSpan>* ActiveSpans = ActivePackageLoadSpans.Find(PackageName))
 					{
 						if (!ActiveSpans->IsEmpty())
@@ -1356,16 +709,7 @@ namespace
 						}
 					}
 				}
-				++Index;
 			}
-
-			FCtcLoadBatchTraceEvent& LoadEvent = LoadBatchTraceEvents.AddDefaulted_GetRef();
-			LoadEvent.TimestampUs = GetRelativeTraceTimestampUs(EndSeconds);
-			LoadEvent.ThreadId = GetOrAddTraceThreadId(Context.bSynchronous ? TEXT("CookLoadSync") : TEXT("CookLoadAsync"));
-			LoadEvent.PackageCount = Context.LoadedPackages.Num();
-			LoadEvent.RecursiveDepth = Context.RecursiveDepth;
-			LoadEvent.bSynchronous = Context.bSynchronous;
-			LoadEvent.PackagesSample = PackageNames.Num() > 0 ? FString::Join(PackageNames, TEXT(", ")) : TEXT("None");
 		}
 
 		void HandlePreSavePackage(UPackage* Package, FObjectPreSaveContext SaveContext)
@@ -1532,17 +876,7 @@ namespace
 		{
 			const bool bHasAnyTraceEvents =
 				!CompletedPackageTraceSpans.IsEmpty() ||
-				!CompletedPackageLoadTraceSpans.IsEmpty() ||
-				!CompletedPackageCompileTraceSpans.IsEmpty() ||
-				!CompletedModuleTraceSpans.IsEmpty() ||
-				!ModuleTraceEvents.IsEmpty() ||
-				!AssetCompileTraceEvents.IsEmpty() ||
-				!AssetCompileCounterTraceEvents.IsEmpty() ||
-				!AsyncLoadingFlushTraceEvents.IsEmpty() ||
-				!LoadBatchTraceEvents.IsEmpty() ||
-				!IdleTraceEvents.IsEmpty() ||
-				!BlockedObjectTraceEvents.IsEmpty() ||
-				!ProgressTraceEvents.IsEmpty();
+				!CompletedPackageLoadTraceSpans.IsEmpty();
 
 			if (!bHasAnyTraceEvents)
 			{
@@ -1586,36 +920,6 @@ namespace
 					return Left.PackageName < Right.PackageName;
 				}
 			);
-			CompletedPackageCompileTraceSpans.Sort(
-				[](const FCtcCompletedPackageCompileTraceSpan& Left, const FCtcCompletedPackageCompileTraceSpan& Right)
-				{
-					if (Left.TimestampUs != Right.TimestampUs)
-					{
-						return Left.TimestampUs < Right.TimestampUs;
-					}
-
-					return Left.PackageName < Right.PackageName;
-				}
-			);
-			CompletedModuleTraceSpans.Sort(
-				[](const FCtcCompletedModuleTraceSpan& Left, const FCtcCompletedModuleTraceSpan& Right)
-				{
-					if (Left.TimestampUs != Right.TimestampUs)
-					{
-						return Left.TimestampUs < Right.TimestampUs;
-					}
-
-					return Left.ModuleName < Right.ModuleName;
-				}
-			);
-			ModuleTraceEvents.Sort([](const FCtcModuleTraceEvent& Left, const FCtcModuleTraceEvent& Right) { return Left.TimestampUs < Right.TimestampUs; });
-			AssetCompileTraceEvents.Sort([](const FCtcAssetCompileTraceEvent& Left, const FCtcAssetCompileTraceEvent& Right) { return Left.TimestampUs < Right.TimestampUs; });
-			AssetCompileCounterTraceEvents.Sort([](const FCtcCounterTraceEvent& Left, const FCtcCounterTraceEvent& Right) { return Left.TimestampUs < Right.TimestampUs; });
-			AsyncLoadingFlushTraceEvents.Sort([](const FCtcAsyncLoadingFlushTraceEvent& Left, const FCtcAsyncLoadingFlushTraceEvent& Right) { return Left.TimestampUs < Right.TimestampUs; });
-			LoadBatchTraceEvents.Sort([](const FCtcLoadBatchTraceEvent& Left, const FCtcLoadBatchTraceEvent& Right) { return Left.TimestampUs < Right.TimestampUs; });
-			IdleTraceEvents.Sort([](const FCtcIdleTraceEvent& Left, const FCtcIdleTraceEvent& Right) { return Left.TimestampUs < Right.TimestampUs; });
-			BlockedObjectTraceEvents.Sort([](const FCtcBlockedObjectTraceEvent& Left, const FCtcBlockedObjectTraceEvent& Right) { return Left.TimestampUs < Right.TimestampUs; });
-			ProgressTraceEvents.Sort([](const FCtcProgressTraceEvent& Left, const FCtcProgressTraceEvent& Right) { return Left.TimestampUs < Right.TimestampUs; });
 
 			const FString TraceDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("CastToCloud"), TEXT("CookTraces"));
 			IFileManager::Get().MakeDirectory(*TraceDirectory, true);
@@ -1654,25 +958,6 @@ namespace
 				Writer->WriteObjectEnd();
 			}
 
-			if (SessionEndSeconds > SessionStartSeconds)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), TEXT("CookSession"));
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.session"));
-				Writer->WriteValue(TEXT("ph"), TEXT("X"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), GetOrAddTraceThreadId(TEXT("CookMain")));
-				Writer->WriteValue(TEXT("ts"), 0);
-				Writer->WriteValue(TEXT("dur"), SecondsToTraceMicroseconds(SessionEndSeconds - SessionStartSeconds));
-				Writer->WriteObjectStart(TEXT("args"));
-				if (!CurrentCookSessionSummary.IsEmpty())
-				{
-					Writer->WriteValue(TEXT("session"), CurrentCookSessionSummary);
-				}
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
 			for (const FCtcCompletedPackageLoadTraceSpan& CompletedSpan : CompletedPackageLoadTraceSpans)
 			{
 				Writer->WriteObjectStart();
@@ -1688,47 +973,6 @@ namespace
 				Writer->WriteValue(TEXT("requestedType"), LoadTypeToString(CompletedSpan.bSynchronousRequest));
 				Writer->WriteValue(TEXT("endSynchronous"), CompletedSpan.bSynchronousCompletion);
 				Writer->WriteValue(TEXT("recursiveDepth"), CompletedSpan.RecursiveDepth);
-				if (!CurrentCookSessionSummary.IsEmpty())
-				{
-					Writer->WriteValue(TEXT("session"), CurrentCookSessionSummary);
-				}
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
-			for (const FCtcCompletedPackageCompileTraceSpan& CompletedSpan : CompletedPackageCompileTraceSpans)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), TEXT("PackageCompileScope"));
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.compile.package"));
-				Writer->WriteValue(TEXT("ph"), TEXT("X"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), CompletedSpan.ThreadId);
-				Writer->WriteValue(TEXT("ts"), CompletedSpan.TimestampUs);
-				Writer->WriteValue(TEXT("dur"), CompletedSpan.DurationUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("package"), CompletedSpan.PackageName);
-				if (!CurrentCookSessionSummary.IsEmpty())
-				{
-					Writer->WriteValue(TEXT("session"), CurrentCookSessionSummary);
-				}
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
-			for (const FCtcCompletedModuleTraceSpan& CompletedSpan : CompletedModuleTraceSpans)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), TEXT("ModuleLoad"));
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.module"));
-				Writer->WriteValue(TEXT("ph"), TEXT("X"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), CompletedSpan.ThreadId);
-				Writer->WriteValue(TEXT("ts"), CompletedSpan.TimestampUs);
-				Writer->WriteValue(TEXT("dur"), CompletedSpan.DurationUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("module"), CompletedSpan.ModuleName);
-				Writer->WriteValue(TEXT("canProcessLoadedObjects"), CompletedSpan.bCanProcessLoadedObjects);
 				if (!CurrentCookSessionSummary.IsEmpty())
 				{
 					Writer->WriteValue(TEXT("session"), CurrentCookSessionSummary);
@@ -1763,158 +1007,6 @@ namespace
 				Writer->WriteObjectEnd();
 			}
 
-			for (const FCtcAsyncLoadingFlushTraceEvent& FlushEvent : AsyncLoadingFlushTraceEvents)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), TEXT("AsyncLoadingFlushStart"));
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.load.flush"));
-				Writer->WriteValue(TEXT("ph"), TEXT("i"));
-				Writer->WriteValue(TEXT("s"), TEXT("g"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), FlushEvent.ThreadId);
-				Writer->WriteValue(TEXT("ts"), FlushEvent.TimestampUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("pendingAsyncPackages"), FlushEvent.PendingAsyncPackages);
-				if (!CurrentCookSessionSummary.IsEmpty())
-				{
-					Writer->WriteValue(TEXT("session"), CurrentCookSessionSummary);
-				}
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
-			for (const FCtcModuleTraceEvent& ModuleEvent : ModuleTraceEvents)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), ModuleEvent.Name);
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.module"));
-				Writer->WriteValue(TEXT("ph"), TEXT("i"));
-				Writer->WriteValue(TEXT("s"), TEXT("g"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), ModuleEvent.ThreadId);
-				Writer->WriteValue(TEXT("ts"), ModuleEvent.TimestampUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("module"), ModuleEvent.ModuleName);
-				if (!ModuleEvent.Detail.IsEmpty())
-				{
-					Writer->WriteValue(TEXT("detail"), ModuleEvent.Detail);
-				}
-				Writer->WriteValue(TEXT("canProcessLoadedObjects"), ModuleEvent.bCanProcessLoadedObjects);
-				if (!CurrentCookSessionSummary.IsEmpty())
-				{
-					Writer->WriteValue(TEXT("session"), CurrentCookSessionSummary);
-				}
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
-			for (const FCtcAssetCompileTraceEvent& CompileEvent : AssetCompileTraceEvents)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), TEXT("AssetCompileComplete"));
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.compile"));
-				Writer->WriteValue(TEXT("ph"), TEXT("i"));
-				Writer->WriteValue(TEXT("s"), TEXT("g"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), CompileEvent.ThreadId);
-				Writer->WriteValue(TEXT("ts"), CompileEvent.TimestampUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("assetCount"), CompileEvent.AssetCount);
-				Writer->WriteValue(TEXT("assets"), CompileEvent.AssetsSample);
-				if (!CurrentCookSessionSummary.IsEmpty())
-				{
-					Writer->WriteValue(TEXT("session"), CurrentCookSessionSummary);
-				}
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
-			for (const FCtcLoadBatchTraceEvent& LoadEvent : LoadBatchTraceEvents)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), TEXT("PackageLoadBatchEnd"));
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.load"));
-				Writer->WriteValue(TEXT("ph"), TEXT("i"));
-				Writer->WriteValue(TEXT("s"), TEXT("g"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), LoadEvent.ThreadId);
-				Writer->WriteValue(TEXT("ts"), LoadEvent.TimestampUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("packageCount"), LoadEvent.PackageCount);
-				Writer->WriteValue(TEXT("recursiveDepth"), LoadEvent.RecursiveDepth);
-				Writer->WriteValue(TEXT("synchronous"), LoadEvent.bSynchronous);
-				Writer->WriteValue(TEXT("packages"), LoadEvent.PackagesSample);
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
-			for (const FCtcIdleTraceEvent& IdleEvent : IdleTraceEvents)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), IdleEvent.Name);
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.wait"));
-				Writer->WriteValue(TEXT("ph"), TEXT("i"));
-				Writer->WriteValue(TEXT("s"), TEXT("g"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), IdleEvent.ThreadId);
-				Writer->WriteValue(TEXT("ts"), IdleEvent.TimestampUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("queueCount"), IdleEvent.QueueCount);
-				Writer->WriteValue(TEXT("pendingCookedPlatformData"), IdleEvent.PendingCookedPlatformData);
-				Writer->WriteValue(TEXT("expectedDueToSlowBuildOperations"), IdleEvent.bExpectedDueToSlowBuildOperations);
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
-			for (const FCtcBlockedObjectTraceEvent& BlockedEvent : BlockedObjectTraceEvents)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), TEXT("CookBlockedObject"));
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.wait"));
-				Writer->WriteValue(TEXT("ph"), TEXT("i"));
-				Writer->WriteValue(TEXT("s"), TEXT("g"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), BlockedEvent.ThreadId);
-				Writer->WriteValue(TEXT("ts"), BlockedEvent.TimestampUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("object"), BlockedEvent.ObjectName);
-				Writer->WriteValue(TEXT("class"), BlockedEvent.ObjectClass);
-				Writer->WriteValue(TEXT("package"), BlockedEvent.PackageName);
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
-			for (const FCtcProgressTraceEvent& ProgressEvent : ProgressTraceEvents)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), TEXT("CookProgress"));
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.progress"));
-				Writer->WriteValue(TEXT("ph"), TEXT("C"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), ProgressEvent.ThreadId);
-				Writer->WriteValue(TEXT("ts"), ProgressEvent.TimestampUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("CookedPackages"), ProgressEvent.CookedPackagesCount);
-				Writer->WriteValue(TEXT("PendingPackages"), ProgressEvent.CookPendingCount);
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
-			for (const FCtcCounterTraceEvent& CounterEvent : AssetCompileCounterTraceEvents)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), CounterEvent.Name);
-				Writer->WriteValue(TEXT("cat"), TEXT("cook.compile.remaining"));
-				Writer->WriteValue(TEXT("ph"), TEXT("C"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), CounterEvent.ThreadId);
-				Writer->WriteValue(TEXT("ts"), CounterEvent.TimestampUs);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("Remaining"), CounterEvent.Value);
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
-
 			Writer->WriteArrayEnd();
 			Writer->WriteObjectEnd();
 			Writer->Close();
@@ -1941,12 +1033,10 @@ namespace
 			UE_LOG(
 				LogCastToCloudMetricsEditor,
 				Display,
-				TEXT("[CookTraceWrite] path=%s packageSpans=%d loadSpans=%d compileSpans=%d moduleSpans=%d"),
+				TEXT("[CookTraceWrite] path=%s packageSpans=%d loadSpans=%d"),
 				*TracePath,
 				CompletedPackageTraceSpans.Num(),
-				CompletedPackageLoadTraceSpans.Num(),
-				CompletedPackageCompileTraceSpans.Num(),
-				CompletedModuleTraceSpans.Num()
+				CompletedPackageLoadTraceSpans.Num()
 			);
 		}
 
@@ -1956,19 +1046,6 @@ namespace
 			CompletedPackageTraceSpans.Empty();
 			ActivePackageLoadSpans.Empty();
 			CompletedPackageLoadTraceSpans.Empty();
-			ActivePackageCompileSpans.Empty();
-			CompletedPackageCompileTraceSpans.Empty();
-			ActiveModuleLoadSpans.Empty();
-			CompletedModuleTraceSpans.Empty();
-			ModuleTraceEvents.Empty();
-			AssetCompileTraceEvents.Empty();
-			AssetCompileCounterTraceEvents.Empty();
-			AsyncLoadingFlushTraceEvents.Empty();
-			LoadBatchTraceEvents.Empty();
-			IdleTraceEvents.Empty();
-			BlockedObjectTraceEvents.Empty();
-			ProgressTraceEvents.Empty();
-			LastAssetCompileCounts.Empty();
 			TraceThreadIds.Empty();
 			CurrentCookSessionSummary.Empty();
 			SessionStartSeconds = 0.0;
@@ -1996,18 +1073,8 @@ namespace
 	private:
 		FDelegateHandle CookStartedHandle;
 		FDelegateHandle CookFinishedHandle;
-		FDelegateHandle CookUpdateDisplayHandle;
-		FDelegateHandle CookSaveIdleHandle;
-		FDelegateHandle CookLoadIdleHandle;
-		FDelegateHandle PackageBlockedHandle;
 		FDelegateHandle SyncLoadPackageHandle;
 		FDelegateHandle AsyncLoadPackageHandle;
-		FDelegateHandle AsyncLoadingFlushHandle;
-		FDelegateHandle AssetCompileScopeHandle;
-		FDelegateHandle AssetPostCompileHandle;
-		FDelegateHandle ModulesChangedHandle;
-		FDelegateHandle ProcessLoadedObjectsHandle;
-		FDelegateHandle CompiledInObjectsHandle;
 		FDelegateHandle PreSavePackageHandle;
 		FDelegateHandle PackageSavedHandle;
 		FDelegateHandle EndLoadPackageHandle;
@@ -2018,27 +1085,12 @@ namespace
 		TArray<FCtcCompletedPackageTraceSpan> CompletedPackageTraceSpans;
 		TMap<FString, TArray<FCtcActivePackageLoadTraceSpan>> ActivePackageLoadSpans;
 		TArray<FCtcCompletedPackageLoadTraceSpan> CompletedPackageLoadTraceSpans;
-		TMap<FString, FCtcActivePackageCompileTraceSpan> ActivePackageCompileSpans;
-		TArray<FCtcCompletedPackageCompileTraceSpan> CompletedPackageCompileTraceSpans;
-		TMap<FString, TArray<FCtcActiveModuleTraceSpan>> ActiveModuleLoadSpans;
-		TArray<FCtcCompletedModuleTraceSpan> CompletedModuleTraceSpans;
-		TArray<FCtcModuleTraceEvent> ModuleTraceEvents;
-		TArray<FCtcAssetCompileTraceEvent> AssetCompileTraceEvents;
-		TArray<FCtcCounterTraceEvent> AssetCompileCounterTraceEvents;
-		TArray<FCtcAsyncLoadingFlushTraceEvent> AsyncLoadingFlushTraceEvents;
-		TArray<FCtcLoadBatchTraceEvent> LoadBatchTraceEvents;
-		TArray<FCtcIdleTraceEvent> IdleTraceEvents;
-		TArray<FCtcBlockedObjectTraceEvent> BlockedObjectTraceEvents;
-		TArray<FCtcProgressTraceEvent> ProgressTraceEvents;
-		TMap<FString, int32> LastAssetCompileCounts;
 		TMap<FString, int32> TraceThreadIds;
 		FString CurrentCookSessionSummary;
 		FString LastTraceOutputPath;
 		double SessionStartSeconds = 0.0;
 		double SessionEndSeconds = 0.0;
 		double HeartbeatAccumulatorSeconds = 0.0;
-		int32 LastCookedPackagesCount = INDEX_NONE;
-		int32 LastCookPendingCount = INDEX_NONE;
 		int32 NextTraceThreadId = 1;
 		int32 TraceFileSequence = 0;
 		bool bCookActive = false;
