@@ -5,7 +5,10 @@
 #include "Commandlets/IChunkDataGenerator.h"
 #include "Cooker/MPCollector.h"
 #include "HAL/FileManager.h"
+#include "HAL/PlatformProcess.h"
+#include "HAL/PlatformTLS.h"
 #include "HAL/PlatformTime.h"
+#include "HAL/ThreadManager.h"
 #include "Interfaces/ITargetPlatform.h"
 #include "Misc/CoreDelegates.h"
 #include "Misc/DateTime.h"
@@ -28,7 +31,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogCastToCloudMetricsEditor, Log, All);
 namespace
 {
 	constexpr double CookHeartbeatIntervalSeconds = 30.0;
-	constexpr int32 TraceProcessId = 1;
+	constexpr int32 SyntheticAsyncTraceThreadId = MAX_int32;
 	bool GCastToCloudChunkFactoryRegistered = false;
 
 	const TCHAR* BoolToString(const bool bValue)
@@ -614,8 +617,7 @@ namespace
 			ResetTraceSession();
 			SessionStartSeconds = FPlatformTime::Seconds();
 			CurrentCookSessionSummary = DescribeCookSession(CookInfo);
-			GetOrAddTraceThreadId(TEXT("CookLoadSync"));
-			GetOrAddTraceThreadId(TEXT("CookLoadAsync"));
+			InitializeTraceIdentity();
 
 			if (!MpCollector.IsValid())
 			{
@@ -691,9 +693,7 @@ namespace
 							CompletedSpan.bSynchronousCompletion = Context.bSynchronous;
 							CompletedSpan.TimestampUs = GetRelativeTraceTimestampUs(ActiveSpan.StartSeconds);
 							CompletedSpan.DurationUs = SecondsToTraceMicroseconds(EndSeconds - ActiveSpan.StartSeconds);
-							CompletedSpan.ThreadId = GetOrAddTraceThreadId(
-								ActiveSpan.bSynchronousRequest ? TEXT("CookLoadSync") : TEXT("CookLoadAsync")
-							);
+							CompletedSpan.ThreadId = ActiveSpan.bSynchronousRequest ? MainThreadTraceId : AsyncTraceThreadId;
 							CompletedSpan.RecursiveDepth = Context.RecursiveDepth;
 
 							UE_LOG(
@@ -804,7 +804,7 @@ namespace
 				CompletedSpan.bProceduralSave = ActiveSpan->bProceduralSave;
 				CompletedSpan.TimestampUs = SecondsToTraceMicroseconds(ActiveSpan->StartSeconds - TraceSessionReferenceSeconds);
 				CompletedSpan.DurationUs = SecondsToTraceMicroseconds(EndSeconds - ActiveSpan->StartSeconds);
-				CompletedSpan.ThreadId = GetOrAddTraceThreadId(ActiveSpan->PlatformName);
+				CompletedSpan.ThreadId = MainThreadTraceId;
 
 				ActivePackageSaveSpans.Remove(PackageKey);
 			}
@@ -860,16 +860,12 @@ namespace
 			ActivePackageSaveSpans.Empty();
 		}
 
-		int32 GetOrAddTraceThreadId(const FString& PlatformName)
+		void InitializeTraceIdentity()
 		{
-			if (const int32* ExistingThreadId = TraceThreadIds.Find(PlatformName))
-			{
-				return *ExistingThreadId;
-			}
-
-			const int32 NewThreadId = NextTraceThreadId++;
-			TraceThreadIds.Add(PlatformName, NewThreadId);
-			return NewThreadId;
+			TraceProcessId = static_cast<int32>(FPlatformProcess::GetCurrentProcessId());
+			const uint32 CurrentMainThreadId = GGameThreadId != 0 ? GGameThreadId : FPlatformTLS::GetCurrentThreadId();
+			MainThreadTraceId = static_cast<int32>(CurrentMainThreadId);
+			AsyncTraceThreadId = SyntheticAsyncTraceThreadId;
 		}
 
 		void WriteTraceFile()
@@ -945,24 +941,31 @@ namespace
 			Writer->WriteObjectEnd();
 			Writer->WriteObjectEnd();
 
-			for (const TPair<FString, int32>& ThreadName : TraceThreadIds)
-			{
-				Writer->WriteObjectStart();
-				Writer->WriteValue(TEXT("name"), TEXT("thread_name"));
-				Writer->WriteValue(TEXT("ph"), TEXT("M"));
-				Writer->WriteValue(TEXT("pid"), TraceProcessId);
-				Writer->WriteValue(TEXT("tid"), ThreadName.Value);
-				Writer->WriteObjectStart(TEXT("args"));
-				Writer->WriteValue(TEXT("name"), ThreadName.Key);
-				Writer->WriteObjectEnd();
-				Writer->WriteObjectEnd();
-			}
+			Writer->WriteObjectStart();
+			Writer->WriteValue(TEXT("name"), TEXT("thread_name"));
+			Writer->WriteValue(TEXT("ph"), TEXT("M"));
+			Writer->WriteValue(TEXT("pid"), TraceProcessId);
+			Writer->WriteValue(TEXT("tid"), MainThreadTraceId);
+			Writer->WriteObjectStart(TEXT("args"));
+			Writer->WriteValue(TEXT("name"), TEXT("MainThread"));
+			Writer->WriteObjectEnd();
+			Writer->WriteObjectEnd();
+
+			Writer->WriteObjectStart();
+			Writer->WriteValue(TEXT("name"), TEXT("thread_name"));
+			Writer->WriteValue(TEXT("ph"), TEXT("M"));
+			Writer->WriteValue(TEXT("pid"), TraceProcessId);
+			Writer->WriteValue(TEXT("tid"), AsyncTraceThreadId);
+			Writer->WriteObjectStart(TEXT("args"));
+			Writer->WriteValue(TEXT("name"), TEXT("Async"));
+			Writer->WriteObjectEnd();
+			Writer->WriteObjectEnd();
 
 			for (const FCtcCompletedPackageLoadTraceSpan& CompletedSpan : CompletedPackageLoadTraceSpans)
 			{
 				Writer->WriteObjectStart();
 				Writer->WriteValue(TEXT("name"), TEXT("PackageLoad"));
-				Writer->WriteValue(TEXT("cat"), CompletedSpan.bSynchronousRequest ? TEXT("cook.load.sync") : TEXT("cook.load.async"));
+				Writer->WriteValue(TEXT("cat"), CompletedSpan.bSynchronousRequest ? TEXT("cook.main.load") : TEXT("cook.async.load"));
 				Writer->WriteValue(TEXT("ph"), TEXT("X"));
 				Writer->WriteValue(TEXT("pid"), TraceProcessId);
 				Writer->WriteValue(TEXT("tid"), CompletedSpan.ThreadId);
@@ -985,7 +988,7 @@ namespace
 			{
 				Writer->WriteObjectStart();
 				Writer->WriteValue(TEXT("name"), TEXT("PackageCook"));
-				Writer->WriteValue(TEXT("cat"), TEXT("cook"));
+				Writer->WriteValue(TEXT("cat"), TEXT("cook.main.cook"));
 				Writer->WriteValue(TEXT("ph"), TEXT("X"));
 				Writer->WriteValue(TEXT("pid"), TraceProcessId);
 				Writer->WriteValue(TEXT("tid"), CompletedSpan.ThreadId);
@@ -1046,11 +1049,12 @@ namespace
 			CompletedPackageTraceSpans.Empty();
 			ActivePackageLoadSpans.Empty();
 			CompletedPackageLoadTraceSpans.Empty();
-			TraceThreadIds.Empty();
 			CurrentCookSessionSummary.Empty();
 			SessionStartSeconds = 0.0;
 			SessionEndSeconds = 0.0;
-			NextTraceThreadId = 1;
+			TraceProcessId = 0;
+			MainThreadTraceId = 0;
+			AsyncTraceThreadId = SyntheticAsyncTraceThreadId;
 		}
 
 		void RegisterChunkGeneratorFactory()
@@ -1085,13 +1089,14 @@ namespace
 		TArray<FCtcCompletedPackageTraceSpan> CompletedPackageTraceSpans;
 		TMap<FString, TArray<FCtcActivePackageLoadTraceSpan>> ActivePackageLoadSpans;
 		TArray<FCtcCompletedPackageLoadTraceSpan> CompletedPackageLoadTraceSpans;
-		TMap<FString, int32> TraceThreadIds;
 		FString CurrentCookSessionSummary;
 		FString LastTraceOutputPath;
 		double SessionStartSeconds = 0.0;
 		double SessionEndSeconds = 0.0;
 		double HeartbeatAccumulatorSeconds = 0.0;
-		int32 NextTraceThreadId = 1;
+		int32 TraceProcessId = 0;
+		int32 MainThreadTraceId = 0;
+		int32 AsyncTraceThreadId = SyntheticAsyncTraceThreadId;
 		int32 TraceFileSequence = 0;
 		bool bCookActive = false;
 		bool bLoggedCookCompleteTick = false;
