@@ -2,7 +2,7 @@
 
 #include <Engine/DeveloperSettings.h>
 
-#include "CtcConfigurationSettings.h"
+//#include "CtcConfigurationSettings.h"
 #include "CtcLogMonitoringSettings.generated.h"
 
 UCLASS(config = CastToCloud, defaultconfig)
@@ -13,7 +13,4 @@ class CASTTOCLOUDLOGMONITOR_API UCtcLogMonitoringSettings : public UDeveloperSet
 public:
 	UPROPERTY(config, EditAnywhere)
 	float LogUploadInterval = 5.0f;
-
-	UPROPERTY(config, EditAnywhere, meta = (ConfigRestartRequired = true))
-	FCtcConfigurationSettings AllowedExecutables = ProductionDedicatedServer;
 };

@@ -91,7 +91,7 @@ void FCtcSharedEditorModule::GeneratePreInitConfig()
 	{
 		if (Property->HasMetaData("CopyToPreInitIni"))
 		{
-			Context.PropertyNames.Add(Property->GetFName());
+			//Context.PropertyNames.Add(Property->GetFName());
 		}
 	}
 

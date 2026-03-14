@@ -1,30 +1,52 @@
 #include "CtcOutputDevice.h"
 
-#include <HttpModule.h>
-#include <Interfaces/IHttpResponse.h>
+// Upload-based implementation kept below as commented reference.
+// #include <HttpModule.h>
+// #include <Interfaces/IHttpResponse.h>
 #include <GeneralProjectSettings.h>
 
 #include "CtcLogMonitor.h"
 #include "CtcLogMonitoringSettings.h"
 #include "CtcLogMonitorLog.h"
-#include "CtcSharedSettings.h"
+// #include "CtcSharedSettings.h"
+
+#include <CoreGlobals.h>
+#include <HAL/FileManager.h>
+#include <HAL/PlatformOutputDevices.h>
+#include <HAL/PlatformTime.h>
+#include <Misc/OutputDeviceHelper.h>
+#include <Misc/Paths.h>
+#include <Misc/ScopeLock.h>
+#include <Serialization/Archive.h>
 
 FCtcOutputDevice::FCtcOutputDevice()
 {
 	InstanceId = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower);
 
+	const FString DefaultLogFilePath = FPlatformOutputDevices::GetAbsoluteLogFilename();
+	const FString LogDirectory = FPaths::GetPath(DefaultLogFilePath);
+	const FString LogBaseFilename = FPaths::GetBaseFilename(DefaultLogFilePath);
+	const FString LogExtension = FPaths::GetExtension(DefaultLogFilePath, true).IsEmpty()
+		? TEXT(".log")
+		: FPaths::GetExtension(DefaultLogFilePath, true);
+
+	LogFilePath = FPaths::Combine(LogDirectory, FString::Printf(TEXT("%s-structured%s"), *LogBaseFilename, *LogExtension));
+
 	UE_LOG(LogCtcLogMonitoring, Display, TEXT("CtcOutputDevice initialized with InstanceId: %s"), *InstanceId);
+	UE_LOG(LogCtcLogMonitoring, Display, TEXT("CtcOutputDevice writing logs to: %s"), *LogFilePath);
 
 	GLog->AddOutputDevice(this);
 	GLog->SerializeBacklog(this);
 
 	const UCtcLogMonitoringSettings* Settings = GetDefault<UCtcLogMonitoringSettings>();
-	const float TickInterval = Settings->LogUploadInterval; 
+	const float TickInterval = Settings->LogUploadInterval;
 	TickHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateRaw(this, &FCtcOutputDevice::Tick), TickInterval);
 }
 
 FCtcOutputDevice::~FCtcOutputDevice()
 {
+	TearDown();
+
 	if (GLog)
 	{
 		GLog->RemoveOutputDevice(this);
@@ -39,9 +61,10 @@ void FCtcOutputDevice::Serialize(const TCHAR* Data, ELogVerbosity::Type Verbosit
 	NewMessage.Verbosity = Verbosity;
 	NewMessage.Category = Category;
 	NewMessage.Data = Data;
-	NewMessage.Time = FDateTime::Now();
+	NewMessage.Time = FPlatformTime::Seconds() - GStartTime;
 
-	PendingMessages.Add(NewMessage);
+	FScopeLock ScopeLock(&PendingMessagesLock);
+	PendingMessages.Add(MoveTemp(NewMessage));
 }
 
 void FCtcOutputDevice::Flush()
@@ -52,6 +75,14 @@ void FCtcOutputDevice::Flush()
 void FCtcOutputDevice::TearDown()
 {
 	SendPendingMessages(true);
+
+	if (LogFileArchive)
+	{
+		LogFileArchive->Flush();
+		LogFileArchive->Close();
+		delete LogFileArchive;
+		LogFileArchive = nullptr;
+	}
 }
 
 bool FCtcOutputDevice::Tick(float DeltaTime)
@@ -61,18 +92,70 @@ bool FCtcOutputDevice::Tick(float DeltaTime)
 	return true;
 }
 
+bool FCtcOutputDevice::EnsureLogArchive()
+{
+	if (LogFileArchive)
+	{
+		return true;
+	}
+
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(LogFilePath), true);
+	LogFileArchive = IFileManager::Get().CreateFileWriter(
+		*LogFilePath,
+		FILEWRITE_AllowRead | FILEWRITE_Append | FILEWRITE_Silent
+	);
+
+	if (!LogFileArchive)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 void FCtcOutputDevice::SendPendingMessages(bool bWait)
 {
-	if (PendingMessages.IsEmpty())
+	if (bWait)
 	{
+		// File writing is synchronous, so there is nothing extra to wait for.
+	}
+
+	TArray<FCtcLogMessage> MessagesToWrite;
+	{
+		FScopeLock ScopeLock(&PendingMessagesLock);
+		if (PendingMessages.IsEmpty())
+		{
+			return;
+		}
+
+		MessagesToWrite = MoveTemp(PendingMessages);
+		PendingMessages.Reset();
+	}
+
+	if (!EnsureLogArchive())
+	{
+		FScopeLock ScopeLock(&PendingMessagesLock);
+		PendingMessages.Append(MoveTemp(MessagesToWrite));
 		return;
 	}
 
-	static FCriticalSection SendMessagesLock;
-	FScopeLock ScopeLock(&SendMessagesLock);
+	for (const FCtcLogMessage& Message : MessagesToWrite)
+	{
+		FOutputDeviceHelper::FormatCastAndSerializeLine(
+			*LogFileArchive,
+			*Message.Data,
+			Message.Verbosity,
+			Message.Category,
+			Message.Time,
+			false,
+			true
+		);
+	}
 
-	const TArray<FCtcLogMessage> MessagesToSend = MoveTemp(PendingMessages);
-	ensure(PendingMessages.IsEmpty());
+	LogFileArchive->Flush();
+
+	/*
+	Old upload flow (kept commented for reference as requested):
 
 	const FString ProjectVersion = GetDefault<UGeneralProjectSettings>()->ProjectVersion;
 
@@ -115,8 +198,10 @@ void FCtcOutputDevice::SendPendingMessages(bool bWait)
 		Request->OnProcessRequestComplete().BindRaw(this, &FCtcOutputDevice::OnPendingMessagesSent);
 		Request->ProcessRequest();
 	}
+	*/
 }
 
+/*
 void FCtcOutputDevice::OnPendingMessagesSent(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 {
 	if (!bWasSuccessful || !Request.IsValid())
@@ -127,9 +212,9 @@ void FCtcOutputDevice::OnPendingMessagesSent(FHttpRequestPtr Request, FHttpRespo
 
 	if (!EHttpResponseCodes::IsOk(Response->GetResponseCode()))
 	{
-		// UE_LOG(LogCtcLogMonitoring, Error, TEXT("Sending logs to backend returned: %d"), Response->GetResponseCode());
 		return;
 	}
-	
+
 	UE_LOG(LogCtcLogMonitoring, VeryVerbose, TEXT("Sent messages to backend successful"));
 }
+*/

@@ -1,8 +1,12 @@
 #pragma once
 
+#include <HAL/CriticalSection.h>
 #include <Misc/OutputDevice.h>
 
-#include <Interfaces/IHttpRequest.h>
+// Upload-based transport kept below as commented reference.
+// #include <Interfaces/IHttpRequest.h>
+
+class FArchive;
 
 /**
  * Represents the information about a log message
@@ -11,12 +15,12 @@ struct FCtcLogMessage
 {
 	FString Data;
 	FName Category;
-	FDateTime Time;
+	double Time = -1.0;
 	ELogVerbosity::Type Verbosity;
 };
 
 /**
- * Output device used to upload logs to the monitoring platform
+ * Output device used to write logs to a local file.
  */
 class FCtcOutputDevice final : public FOutputDevice
 {
@@ -32,14 +36,20 @@ private:
 	//~ End FOutputDevice interface
 
 	bool Tick(float DeltaTime);
+	bool EnsureLogArchive();
 	void SendPendingMessages(bool bWait = false);
-	void OnPendingMessagesSent(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
+
+	// Upload implementation kept as reference:
+	// void OnPendingMessagesSent(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
 
 	TArray<FCtcLogMessage> PendingMessages;
+	FCriticalSection PendingMessagesLock;
 
 	FTSTicker::FDelegateHandle TickHandle;
-	
+
 	FString InstanceId;
+	FString LogFilePath;
+	FArchive* LogFileArchive = nullptr;
 
 	//TODO: Consider those
 	//virtual bool CanBeUsedOnAnyThread() const override;
