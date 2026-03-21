@@ -12,6 +12,7 @@ public class CastToCloud : ModuleRules
 				"Core",
 				"CoreUObject",
 				"Engine",
+				"Slate",
 
 				"CastToCloudAnalytics",
 				"CastToCloudMetrics",

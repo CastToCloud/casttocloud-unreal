@@ -13,6 +13,7 @@
 #include <HAL/IConsoleManager.h>
 #include <Misc/App.h>
 #include <Misc/CommandLine.h>
+#include <Framework/Application/SlateApplication.h>
 
 #include "CtcAnalyticsBPFL.h"
 #include "CtcMetricsLog.h"
@@ -77,6 +78,7 @@ extern ENGINE_API float GAverageFPS;
 void UCtcPerformanceMonitoringSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	GEngine->OnHitchDetectedDelegate.AddUObject(this, &UCtcPerformanceMonitoringSubsystem::OnHitchDetected);
+	FSlateApplication::Get().OnApplicationActivationStateChanged().AddUObject(this, &UCtcPerformanceMonitoringSubsystem::OnApplicationActivationStateChanged);
 }
 
 bool UCtcPerformanceMonitoringSubsystem::ShouldCreateSubsystem(UObject* Outer) const
@@ -188,6 +190,14 @@ void UCtcPerformanceMonitoringSubsystem::TickDebug()
 	for (const FString& DebugFlag : DebugFlags)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Black, *DebugFlag, false);
+	}
+}
+
+void UCtcPerformanceMonitoringSubsystem::OnApplicationActivationStateChanged(const bool bIsActive)
+{
+	if (!bIsActive)
+	{
+		LowFPSStartTime.Reset();
 	}
 }
 

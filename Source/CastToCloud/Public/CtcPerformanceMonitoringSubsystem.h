@@ -39,6 +39,7 @@ private:
 
 	void OnHitchDetected(EFrameHitchType Type, float Duration);
 	void OnLowFPSDetected(float Average, float Duration);
+	void OnApplicationActivationStateChanged(const bool bIsActive);
 
 	TOptional<FDateTime> LowFPSStartTime;
 	TArray<float> RecentFrames;
