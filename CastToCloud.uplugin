@@ -40,6 +40,18 @@
 			"LoadingPhase": "PreDefault"
 		},
 		{
+			"Name": "CastToCloudConnect",
+			"Type": "Runtime",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
+			"LoadingPhase": "PreDefault"
+		},
+		{
+			"Name": "CastToCloudConnectEditor",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
+			"Type": "Editor",
+			"LoadingPhase": "PreDefault"
+		},
+		{
 			"Name": "CastToCloudAnalyticsEditor",
 			"PlatformAllowList": [ "Win64", "Mac", "Linux" ],
 			"Type": "Editor",
@@ -75,6 +87,10 @@
 	"Plugins": [
 		{
 			"Name": "AnalyticsBlueprintLibrary",
+			"Enabled": true
+		},
+		{
+			"Name": "UdpMessaging",
 			"Enabled": true
 		}
 	]
