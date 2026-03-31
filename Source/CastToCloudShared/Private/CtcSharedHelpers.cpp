@@ -6,14 +6,45 @@
 #include <Engine/LocalPlayer.h>
 #include <GameFramework/Pawn.h>
 #include <HAL/FileManager.h>
+#include <Sockets.h>
+#include <SocketSubsystem.h>
 #include <Misc/CommandLine.h>
 #include <Misc/ConfigCacheIni.h>
 #include <Misc/ConfigContext.h>
 #include <UObject/Package.h>
+#include <Interfaces/IPluginManager.h>
+#include <Misc/Paths.h>
+#include <Misc/MonitoredProcess.h>
 
 #if WITH_EDITOR
 #include <Editor.h>
 #endif
+
+TOptional<FString> GetCliPath()
+{
+	const TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("CastToCloud"));
+	if (!Plugin.IsValid())
+	{
+		return {};
+	}
+
+#if PLATFORM_WINDOWS
+	const FString ExpectedPath = Plugin->GetBaseDir() / TEXT("Binaries") / TEXT("Win64") / TEXT("casttocloud-cli.exe");
+#elif PLATFORM_MAC
+	const FString ExpectedPath = Plugin->GetBaseDir() / TEXT("Binaries") / TEXT("Mac") / TEXT("casttocloud-cli"));
+#elif PLATFORM_LINUX
+	const FString ExpectedPath = Plugin->GetBaseDir() / TEXT("Binaries") / TEXT("Mac") / TEXT("casttocloud-cli"));
+#else
+	const FString ExpectedPath = TEXT("");
+#endif
+	
+	if (!FPaths::FileExists(ExpectedPath))
+	{
+		return {};
+	}
+
+	return ExpectedPath;
+}
 
 UWorld* CastToCloudSharedHelpers::GetCurrentWorld()
 {
@@ -135,6 +166,62 @@ TOptional<FTransform> CastToCloudSharedHelpers::GetAutoTransformContextFromPlaye
 	if (const APlayerCameraManager* CameraManager = LocalController->PlayerCameraManager)
 	{
 		return FTransform(CameraManager->GetCameraRotation(), CameraManager->GetCameraLocation());
+	}
+
+	return {};
+}
+
+TUniquePtr<FMonitoredProcess> CastToCloudSharedHelpers::SpawnCliProcess(const FSpawnCliArgs& Args)
+{
+	UE_LOG_REF(Args.LogCategory, Verbose, TEXT("CLI starting for %s with args: %s"), *Args.ProcessName, *Args.CommandLine);
+
+	TOptional<FString> CliPath = GetCliPath();
+	if (!CliPath)
+	{
+		UE_LOG_REF(Args.LogCategory, Warning, TEXT("CLI doesn't have a valid path"));
+		return nullptr;
+	}
+
+	TUniquePtr<FMonitoredProcess> Process = MakeUnique<FMonitoredProcess>(*CliPath, Args.CommandLine, /*bInHidden=*/ true);
+	const bool bLaunchSuccess = Process->Launch();
+
+	if (!bLaunchSuccess)
+	{
+		UE_LOG_REF(Args.LogCategory, Warning, TEXT("CLI failed to launch"));
+		return nullptr;
+	}
+
+	Process->OnOutput().BindLambda([Args](const FString& Line)
+		{
+			UE_LOG_REF(Args.LogCategory, Verbose, TEXT("[%s] %s"), *Args.ProcessName, *Line);
+		});
+
+	return Process;
+}
+
+TOptional<int32> CastToCloudSharedHelpers::GetFreeLocalPort()
+{
+	ISocketSubsystem* SocketSubsystem = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
+	FSocket* Socket = SocketSubsystem ? SocketSubsystem->CreateSocket(NAME_Stream, TEXT("CtcPortProbe"), false) : nullptr;
+	if (!Socket)
+	{
+		return {};
+	}
+
+	ON_SCOPE_EXIT 
+	{
+		Socket->Close();
+		SocketSubsystem->DestroySocket(Socket);
+	};
+
+	TSharedRef<FInternetAddr> Addr = SocketSubsystem->CreateInternetAddr();
+	Addr->SetLoopbackAddress();
+	Addr->SetPort(0);
+
+	if (Socket->Bind(*Addr))
+	{
+		Socket->GetAddress(*Addr);
+		return Addr->GetPort();
 	}
 
 	return {};
