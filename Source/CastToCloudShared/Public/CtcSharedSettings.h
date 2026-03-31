@@ -82,6 +82,24 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", InvalidEnumValues = "Disabled"))
 	ECtcSharedAnalyticsSpatialTracking AutoPlayerMoveTrackingMethod = ECtcSharedAnalyticsSpatialTracking::PlayerPawn;
 
+	UPROPERTY(Config, EditAnywhere, Category = "Connect|MessagingRelay")
+	FCtcSharedConfigurationSettings MessagingRelayEnabled = PackagedDedicatedServer;
+
+	UPROPERTY(Config, EditAnywhere, Category = "CLI|Staging")
+	bool bStageCliForGame = false;
+
+	UPROPERTY(Config, EditAnywhere, Category = "CLI|Staging")
+	bool bStageCliForServer = false;
+
+	UPROPERTY(Config, EditAnywhere, Category = "CLI|Staging")
+	bool bStageCliForClient = false;
+
+	UPROPERTY(Config, EditAnywhere, Category = "CLI|Staging")
+	bool bStageCliForEditor = false;
+
+	UPROPERTY(Config, EditAnywhere, Category = "CLI|Staging")
+	bool bStageCliForProgram = false;
+
 	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (CopyToPreInitIni))
 	FCtcSharedConfigurationSettings TrackingEnabled = DevGameClients;
 	/*

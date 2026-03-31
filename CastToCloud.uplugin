@@ -58,6 +58,20 @@
 			"LoadingPhase": "PreDefault"
 		}
 	],
+	"PreBuildSteps":
+	{
+		"Win64": [
+			"powershell -ExecutionPolicy Bypass -File \"$(PluginDir)/Scripts/Cli/download.ps1\" \"$(PluginDir)\""
+		],
+		"Mac": [
+			"chmod +x '$(PluginDir)/Scripts/Cli/download.sh'",
+			"'$(PluginDir)/Scripts/Cli/download.sh' --plugin-dir '$(PluginDir)'"
+		],
+		"Linux": [
+			"chmod +x '$(PluginDir)/Scripts/Cli/download.sh'",
+			"'$(PluginDir)/Scripts/Cli/download.sh' --plugin-dir '$(PluginDir)'"
+		]
+	},
 	"Plugins": [
 		{
 			"Name": "AnalyticsBlueprintLibrary",
