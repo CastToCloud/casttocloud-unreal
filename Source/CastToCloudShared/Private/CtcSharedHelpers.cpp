@@ -33,9 +33,9 @@ TOptional<FString> GetCliPath()
 #if PLATFORM_WINDOWS
 	const FString ExpectedPath = Plugin->GetBaseDir() / TEXT("Binaries") / TEXT("Win64") / TEXT("casttocloud-cli.exe");
 #elif PLATFORM_MAC
-	const FString ExpectedPath = Plugin->GetBaseDir() / TEXT("Binaries") / TEXT("Mac") / TEXT("casttocloud-cli"));
+	const FString ExpectedPath = Plugin->GetBaseDir() / TEXT("Binaries") / TEXT("Mac") / TEXT("casttocloud-cli");
 #elif PLATFORM_LINUX
-	const FString ExpectedPath = Plugin->GetBaseDir() / TEXT("Binaries") / TEXT("Mac") / TEXT("casttocloud-cli"));
+	const FString ExpectedPath = Plugin->GetBaseDir() / TEXT("Binaries") / TEXT("Mac") / TEXT("casttocloud-cli");
 #else
 	const FString ExpectedPath = TEXT("");
 #endif

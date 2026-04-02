@@ -132,8 +132,8 @@ void UCtcMessagingRelayClientSubsystem::RefreshTunnelsAsync()
 
 void UCtcMessagingRelayClientSubsystem::OpenTunnel(const FString& ConnectAddress, const FString& ConnectSecret)
 {
-	const FString ProcessName = FString::Printf(TEXT("MessagingRelayClient_%s"), *ConnectAddress);
-	CastToCloudSharedHelpers::FSpawnCliArgs Args = { ProcessName, LogCtcConnect};
+	CastToCloudSharedHelpers::FSpawnCliArgs Args;
+	Args.ProcessName = FString::Printf(TEXT("MessagingRelayClient_%s"), *ConnectAddress);
 
 	const int32 Port = *CastToCloudSharedHelpers::GetFreeLocalPort();
 	const FString BindAddress = FString::Printf(TEXT("127.0.0.1:%d"), Port);
