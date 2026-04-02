@@ -16,6 +16,8 @@
 #include <Misc/Paths.h>
 #include <Misc/MonitoredProcess.h>
 
+#include "CtcSharedLog.h"
+
 #if WITH_EDITOR
 #include <Editor.h>
 #endif
@@ -173,27 +175,28 @@ TOptional<FTransform> CastToCloudSharedHelpers::GetAutoTransformContextFromPlaye
 
 TUniquePtr<FMonitoredProcess> CastToCloudSharedHelpers::SpawnCliProcess(const FSpawnCliArgs& Args)
 {
-	UE_LOG_REF(Args.LogCategory, Verbose, TEXT("CLI starting for %s with args: %s"), *Args.ProcessName, *Args.CommandLine);
+	UE_LOG(LogCtcShared, Verbose, TEXT("[%s] CLI starting with args: %s"), *Args.ProcessName, *Args.CommandLine);
 
 	TOptional<FString> CliPath = GetCliPath();
 	if (!CliPath)
 	{
-		UE_LOG_REF(Args.LogCategory, Warning, TEXT("CLI doesn't have a valid path"));
+		UE_LOG(LogCtcShared, Warning, TEXT("[%s] CLI doesn't have a valid path"), *Args.ProcessName);
 		return nullptr;
 	}
 
+	//TODO: add a --parent-pid argument to the CLI itself. The server watches for the parent PID to disappear and self-terminates
 	TUniquePtr<FMonitoredProcess> Process = MakeUnique<FMonitoredProcess>(*CliPath, Args.CommandLine, /*bInHidden=*/ true);
 	const bool bLaunchSuccess = Process->Launch();
 
 	if (!bLaunchSuccess)
 	{
-		UE_LOG_REF(Args.LogCategory, Warning, TEXT("CLI failed to launch"));
+		UE_LOG(LogCtcShared, Warning, TEXT("[%s] CLI failed to launch"), *Args.ProcessName);
 		return nullptr;
 	}
 
-	Process->OnOutput().BindLambda([Args](const FString& Line)
+	Process->OnOutput().BindLambda([ProcessName = Args.ProcessName](const FString& Line)
 		{
-			UE_LOG_REF(Args.LogCategory, Verbose, TEXT("[%s] %s"), *Args.ProcessName, *Line);
+			UE_LOG(LogCtcShared, Warning, TEXT("[%s] %s"), *ProcessName, *Line);
 		});
 
 	return Process;

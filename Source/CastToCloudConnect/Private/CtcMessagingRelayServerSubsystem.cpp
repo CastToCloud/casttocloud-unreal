@@ -48,7 +48,8 @@ void UCtcMessagingRelayServerSubsystem::Initialize(FSubsystemCollectionBase& Col
 	
 	if (IsMessagingRelayEnabled())
 	{
-		CastToCloudSharedHelpers::FSpawnCliArgs Args = {TEXT("MessagingRelayServer"), LogCtcConnect};
+		CastToCloudSharedHelpers::FSpawnCliArgs Args;
+		Args.ProcessName = TEXT("MessagingRelayServer");
 
 		const UCtcSharedSettings* SharedSettings = GetDefault<UCtcSharedSettings>();
 		const FString ApiUrl = SharedSettings->ApiUrl;

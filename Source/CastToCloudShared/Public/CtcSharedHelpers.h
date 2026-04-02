@@ -23,11 +23,8 @@ namespace CastToCloudSharedHelpers
 
 	struct CASTTOCLOUDSHARED_API FSpawnCliArgs
 	{
-		FSpawnCliArgs(const FString& InProcessName, const FLogCategoryBase& InLogCategory) : ProcessName(InProcessName), LogCategory(InLogCategory) {}
-
 		FString ProcessName;
 		FString CommandLine;
-		FLogCategoryBase LogCategory;
 	};
 	CASTTOCLOUDSHARED_API TUniquePtr<FMonitoredProcess> SpawnCliProcess(const FSpawnCliArgs& Args);
 	CASTTOCLOUDSHARED_API TOptional<int32> GetFreeLocalPort();
