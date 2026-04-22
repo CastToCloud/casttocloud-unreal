@@ -25,7 +25,7 @@ void FCtcAnalyticsApiConsumer::HandleEvents(const FString& SessionId, const TArr
 {
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
 	const bool bAllowAnyConfiguration = FParse::Param(FCommandLine::Get(), TEXT("AnalyticsAnyConfiguration"));
-	if (Settings && !Settings->AllowedExecutables.IsCurrentConfigurationAllowed() && !bAllowAnyConfiguration)
+	if (Settings && !Settings->AnalyticsSendingEnabled.IsCurrentConfigurationAllowed() && !bAllowAnyConfiguration)
 	{
 		UE_LOG(LogCtcAnalytics, Warning, TEXT("ApiConsumer current configuration doesn't allow - session: %s, number of events: %s"), *SessionId, *LexToString(Events.Num()));
 		return;

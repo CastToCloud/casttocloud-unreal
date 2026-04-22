@@ -56,7 +56,7 @@ public:
 	bool NeedsToSetAnalyticsProvider() const;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Sending")
-	FCtcSharedConfigurationSettings AllowedExecutables = PackagedGameClients;
+	FCtcSharedConfigurationSettings AnalyticsSendingEnabled = PackagedGameClients;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|Sending", meta = (Units = "s"))
 	float SendInterval = 60.0f;
@@ -100,8 +100,9 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "CLI|Staging")
 	bool bStageCliForProgram = false;
 
+	// TODO: Rename to PerformanceMonitoringEnabled when the feature is renamed from PerformanceTracking to PerformanceMonitoring
 	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (CopyToPreInitIni))
-	FCtcSharedConfigurationSettings TrackingEnabled = DevGameClients;
+	FCtcSharedConfigurationSettings PerformanceTrackingEnabled = DevGameClients;
 	/*
 	 * Tail buffer size used in Editor builds (Unreal Insights default).
 	 * Not configurable via the plugin, but can be overridden at launch with `-tracetailmb=`.

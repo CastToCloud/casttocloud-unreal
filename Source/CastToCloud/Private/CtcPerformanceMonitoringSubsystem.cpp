@@ -90,7 +90,7 @@ bool UCtcPerformanceMonitoringSubsystem::ShouldCreateSubsystem(UObject* Outer) c
 
 	// TODO: We should move this to tick and also take other things into account, e.g.: CPU throttling, or not in focus
 	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
-	return Settings && Settings->TrackingEnabled.IsCurrentConfigurationAllowed();
+	return Settings && Settings->PerformanceTrackingEnabled.IsCurrentConfigurationAllowed();
 }
 
 void UCtcPerformanceMonitoringSubsystem::Tick(float DeltaTime)
