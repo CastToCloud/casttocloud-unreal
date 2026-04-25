@@ -18,7 +18,7 @@
 UWorld* CastToCloudSharedHelpers::GetCurrentWorld()
 {
 #if WITH_EDITOR
-	if (GIsEditor)
+	if (GEditor)
 	{
 		if (FWorldContext* PIEWorldContext = GEditor->GetPIEWorldContext())
 		{

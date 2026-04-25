@@ -18,10 +18,6 @@
 #include <RHIStrings.h>
 #include <Runtime/Launch/Resources/Version.h>
 #include <Serialization/JsonSerializer.h>
-#if WITH_EDITOR
-#include <Editor/UnrealEdEngine.h>
-#include <UnrealEdGlobals.h>
-#endif
 
 #include "CtcAnalyticsConsumer.h"
 #include "CtcAnalyticsLog.h"
@@ -67,22 +63,6 @@ namespace
 
 		// TODO: It would be super interesting if we could get this based on the native OSS ? Maybe not by default but in general a potential idea.
 		return {};
-	}
-
-	bool IsPlaying()
-	{
-#if WITH_EDITOR
-		// For editor builds we consider the user playing if he is in a PIE session
-		FWorldContext* PIEWorldContext = GUnrealEd->GetPIEWorldContext();
-		if (PIEWorldContext && PIEWorldContext->WorldType == EWorldType::PIE)
-		{
-			return true;
-		}
-		return false;
-#else
-		// For non-editor builds we consider the user is always playing
-		return true;
-#endif
 	}
 } // namespace
 
@@ -266,7 +246,8 @@ void FCtcAnalyticsProvider::RecordEventInternal(const FString& EventName, TOptio
 
 bool FCtcAnalyticsProvider::Tick(float DeltaTime)
 {
-	if (!IsPlaying())
+	const UWorld* World = CastToCloudSharedHelpers::GetCurrentWorld();
+	if (!World || !World->IsGameWorld())
 	{
 		return true;
 	}
