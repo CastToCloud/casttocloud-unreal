@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <CoreMinimal.h>
-
 namespace CastToCloudMetricsTraceHelpers
 {
 	CASTTOCLOUDMETRICS_API void WriteAndUploadTrace(const FString& TraceId);
