@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <Templates/ValueOrError.h>
+
 class APlayerController;
 
 namespace CastToCloudSharedHelpers
