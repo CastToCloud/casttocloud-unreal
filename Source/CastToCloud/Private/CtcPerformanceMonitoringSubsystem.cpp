@@ -8,12 +8,12 @@
 #include <Engine/Engine.h>
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>
+#include <Framework/Application/SlateApplication.h>
 #include <GameFramework/Pawn.h>
 #include <GameFramework/PlayerController.h>
 #include <HAL/IConsoleManager.h>
 #include <Misc/App.h>
 #include <Misc/CommandLine.h>
-#include <Framework/Application/SlateApplication.h>
 
 #include "CtcAnalyticsBPFL.h"
 #include "CtcMetricsLog.h"
