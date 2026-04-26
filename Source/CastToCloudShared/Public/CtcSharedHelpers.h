@@ -2,9 +2,15 @@
 
 #pragma once
 
-#include <CoreMinimal.h>
+#include <Containers/UnrealString.h>
+#include <Delegates/Delegate.h>
+#include <Math/Transform.h>
+#include <Misc/ConfigCacheIni.h>
+#include <Misc/Optional.h>
+#include <Templates/ValueOrError.h>
 
 class APlayerController;
+class UWorld;
 
 namespace CastToCloudSharedHelpers
 {
