@@ -4,6 +4,7 @@
 #include <Misc/CoreDelegates.h>
 #include <ProfilingDebugging/TraceAuxiliary.h>
 
+#include "CtcMetricsLog.h"
 #include "CtcSharedConfigurationSettings.h"
 #include "CtcSharedHelpers.h"
 
@@ -11,15 +12,30 @@ namespace
 {
 	void AdjustTraceTailSizeBytes(int32 TailSizeBytes)
 	{
+		UE_LOG(LogCtcMetrics, Verbose, TEXT("Adjusting trace tail size bytes to %d"), TailSizeBytes);
+
 		UE::Trace::FInitializeDesc const* InitDesc = FTraceAuxiliary::GetInitializeDesc();
+		if (!InitDesc)
+		{
+			UE_LOG(LogCtcMetrics, Error, TEXT("Failed to adjust trace tail size bytes."));
+			return;
+		}
+
 		UE::Trace::FInitializeDesc* MutableDesc = const_cast<UE::Trace::FInitializeDesc*>(InitDesc);
 		MutableDesc->TailSizeBytes = TailSizeBytes;
 	}
 
 	void StartTraceToMemory(FString Channels)
 	{
+		UE_LOG(LogCtcMetrics, Verbose, TEXT("Starting trace to memory with channels: %s"), *Channels);
+
 		FTraceAuxiliary::FOptions Options;
-		FTraceAuxiliary::Start(FTraceAuxiliary::EConnectionType::None, nullptr, *Channels, &Options, LogTemp);
+		const bool bTraceStart = FTraceAuxiliary::Start(FTraceAuxiliary::EConnectionType::None, nullptr, *Channels, &Options, LogCtcMetrics);
+
+		if (!bTraceStart)
+		{
+			UE_LOG(LogCtcMetrics, Error, TEXT("Failed to start trace to memory."));
+		}
 	}
 } // namespace
 
