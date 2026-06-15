@@ -68,6 +68,37 @@ void FCtcSharedEditorModule::ShutdownModule()
 	}
 }
 
+// Backwards-compatible equivalent of UObject::SaveConfig(FSaveConfigContext) with per-property filtering (introduced in UE 5.6).
+static void SaveTaggedConfigProperties(UObject* Object, const FName MetaDataTag, const FString& Filename)
+{
+	FConfigCacheIni TempConfig(EConfigCacheType::DiskBacked);
+	const FString Section = Object->GetClass()->GetPathName();
+	const int32 PortFlags = EPropertyPortFlags::PPF_SerializedAsImportText;
+
+	for (FProperty* Property = Object->GetClass()->PropertyLink; Property; Property = Property->PropertyLinkNext)
+	{
+		if (!Property->HasAnyPropertyFlags(CPF_Config) || !Property->HasMetaData(MetaDataTag))
+		{
+			continue;
+		}
+
+		for (int32 Index = 0; Index < Property->ArrayDim; ++Index)
+		{
+			FString Key = Property->GetName();
+			if (Property->ArrayDim != 1)
+			{
+				Key = FString::Printf(TEXT("%s[%d]"), *Property->GetName(), Index);
+			}
+
+			FString Value;
+			Property->ExportText_InContainer(Index, Value, Object, Object, Object, PortFlags);
+			TempConfig.SetString(*Section, *Key, *Value, *Filename);
+		}
+	}
+
+	TempConfig.Flush(false, *Filename);
+}
+
 void FCtcSharedEditorModule::GeneratePreInitConfig()
 {
 	if (!IsRunningCookCommandlet())
@@ -81,21 +112,7 @@ void FCtcSharedEditorModule::GeneratePreInitConfig()
 
 	UCtcSharedSettings* SharedSettings = GetMutableDefault<UCtcSharedSettings>();
 
-	FConfigCacheIni TempConfig(EConfigCacheType::DiskBacked);
-	UObject::FSaveConfigContext Context;
-	Context.Filename = ConfigForPreInit;
-	Context.ConfigSystem = &TempConfig;
-	Context.bAllowCopyToDefaultObject = false;
-
-	for (FProperty* Property = SharedSettings->GetClass()->PropertyLink; Property; Property = Property->PropertyLinkNext)
-	{
-		if (Property->HasMetaData("CopyToPreInitIni"))
-		{
-			Context.PropertyNames.Add(Property->GetFName());
-		}
-	}
-
-	SharedSettings->SaveConfig(Context);
+	SaveTaggedConfigProperties(SharedSettings, "CopyToPreInitIni", ConfigForPreInit);
 }
 
 void FCtcSharedEditorModule::RemovePublicKeyFromPackage()
