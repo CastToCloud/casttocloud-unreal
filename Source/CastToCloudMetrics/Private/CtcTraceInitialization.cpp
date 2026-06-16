@@ -43,6 +43,11 @@ static FDelayedAutoRegisterHelper MonitoringEnginePreInit(
 	EDelayedRegisterRunPhase::StartOfEnginePreInit,
 	[]
 	{
+		if (IsRunningCommandlet())
+		{
+			return;
+		}
+
 		auto IniConfig = CastToCloudSharedHelpers::GetPreInitConfig();
 		if (IniConfig.HasError())
 		{
