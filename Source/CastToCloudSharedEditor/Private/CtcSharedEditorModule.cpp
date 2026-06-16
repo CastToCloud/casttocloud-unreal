@@ -72,6 +72,8 @@ void FCtcSharedEditorModule::ShutdownModule()
 static void SaveTaggedConfigProperties(UObject* Object, const FName MetaDataTag, const FString& Filename)
 {
 	FConfigCacheIni TempConfig(EConfigCacheType::DiskBacked);
+	TempConfig.AddNewBranch(Filename);
+
 	const FString Section = Object->GetClass()->GetPathName();
 	const int32 PortFlags = EPropertyPortFlags::PPF_SerializedAsImportText;
 
@@ -112,7 +114,7 @@ void FCtcSharedEditorModule::GeneratePreInitConfig()
 
 	UCtcSharedSettings* SharedSettings = GetMutableDefault<UCtcSharedSettings>();
 
-	SaveTaggedConfigProperties(SharedSettings, "CopyToPreInitIni", ConfigForPreInit);
+	SaveTaggedConfigProperties(SharedSettings, TEXT("CopyToPreInitIni"), ConfigForPreInit);
 }
 
 void FCtcSharedEditorModule::RemovePublicKeyFromPackage()
