@@ -17,7 +17,6 @@ namespace CastToCloudSharedHelpers
 	CASTTOCLOUDSHARED_API UWorld* GetCurrentWorld();
 	CASTTOCLOUDSHARED_API TOptional<FString> GetWorldPackage(const UWorld* World = nullptr);
 	CASTTOCLOUDSHARED_API APlayerController* GetFirstLocalPlayerController(const UWorld* World = nullptr);
-	CASTTOCLOUDSHARED_API TValueOrError<FConfigFile, FString> GetPreInitConfig();
 
 	using FGetAutoTransformContextDelegate = TTSDelegate<TOptional<FTransform>()>;
 	CASTTOCLOUDSHARED_API FGetAutoTransformContextDelegate& GetAutoTransformContextDelegate();

@@ -7,7 +7,6 @@
 #include <HttpServerModule.h>
 #include <IHttpRouter.h>
 #include <Interfaces/IPluginManager.h>
-#include <Misc/ConfigCacheIni.h>
 #include <PropertyEditorModule.h>
 #include <Settings/ProjectPackagingSettings.h>
 #include <ToolMenus.h>
@@ -42,8 +41,6 @@ void FCtcSharedEditorModule::StartupModule()
 	PropertyModule.RegisterCustomPropertyTypeLayout(FCtcSharedApiKey::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FCtcSharedApiKeyCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout(UCtcSharedSettings::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FCtcSharedSettingsDetailsCustomization::MakeInstance));
 
-	GeneratePreInitConfig();
-
 	RemovePublicKeyFromPackage();
 
 	if (!IsRunningCookCommandlet())
@@ -66,55 +63,6 @@ void FCtcSharedEditorModule::ShutdownModule()
 	{
 		StopHttpServer();
 	}
-}
-
-// Backwards-compatible equivalent of UObject::SaveConfig(FSaveConfigContext) with per-property filtering (introduced in UE 5.6).
-static void SaveTaggedConfigProperties(UObject* Object, const FName MetaDataTag, const FString& Filename)
-{
-	FConfigCacheIni TempConfig(EConfigCacheType::DiskBacked);
-	TempConfig.AddNewBranch(Filename);
-
-	const FString Section = Object->GetClass()->GetPathName();
-	const int32 PortFlags = EPropertyPortFlags::PPF_SerializedAsImportText;
-
-	for (FProperty* Property = Object->GetClass()->PropertyLink; Property; Property = Property->PropertyLinkNext)
-	{
-		if (!Property->HasAnyPropertyFlags(CPF_Config) || !Property->HasMetaData(MetaDataTag))
-		{
-			continue;
-		}
-
-		for (int32 Index = 0; Index < Property->ArrayDim; ++Index)
-		{
-			FString Key = Property->GetName();
-			if (Property->ArrayDim != 1)
-			{
-				Key = FString::Printf(TEXT("%s[%d]"), *Property->GetName(), Index);
-			}
-
-			FString Value;
-			Property->ExportText_InContainer(Index, Value, Object, Object, Object, PortFlags);
-			TempConfig.SetString(*Section, *Key, *Value, *Filename);
-		}
-	}
-
-	TempConfig.Flush(false, *Filename);
-}
-
-void FCtcSharedEditorModule::GeneratePreInitConfig()
-{
-	if (!IsRunningCookCommandlet())
-	{
-		UE_LOG(LogCtcShared, Verbose, TEXT("Editor instance is not cooking, no need to generate PreInit configs."));
-		return;
-	}
-
-	FString ConfigForPreInit = FPaths::ProjectIntermediateDir() / TEXT("CastToCloud") / TEXT("PreInitCastToCloud.ini");
-	UE_LOG(LogCtcShared, Display, TEXT("Editor instance is cooking, generating PreInit configs at %s."), *ConfigForPreInit);
-
-	UCtcSharedSettings* SharedSettings = GetMutableDefault<UCtcSharedSettings>();
-
-	SaveTaggedConfigProperties(SharedSettings, TEXT("CopyToPreInitIni"), ConfigForPreInit);
 }
 
 void FCtcSharedEditorModule::RemovePublicKeyFromPackage()

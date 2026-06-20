@@ -17,7 +17,6 @@ private:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 
-	void GeneratePreInitConfig();
 	void RemovePublicKeyFromPackage();
 
 	void StartHttpServer();

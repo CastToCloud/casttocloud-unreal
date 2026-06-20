@@ -82,7 +82,7 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Analytics|AutoTracking", meta = (editcondition = "bAutoPlayerMoveTracking", InvalidEnumValues = "Disabled"))
 	ECtcSharedAnalyticsSpatialTracking AutoPlayerMoveTrackingMethod = ECtcSharedAnalyticsSpatialTracking::PlayerPawn;
 
-	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (CopyToPreInitIni))
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking")
 	FCtcSharedConfigurationSettings TrackingEnabled = DevGameClients;
 	/*
 	 * Tail buffer size used in Editor builds (Unreal Insights default).
@@ -94,12 +94,12 @@ public:
 	 * Tail buffer size used in packaged games.
 	 * Larger values retain more trace history but increase memory usage and output file size.
 	 */
-	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (Units = "Bytes", CopyToPreInitIni))
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (Units = "Bytes"))
 	uint32 GameTailSizeBytes = 4 << 20;
 	/*
 	 * Trace channels used by the in-memory trace
 	 */
-	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking", meta = (CopyToPreInitIni))
+	UPROPERTY(Config, EditAnywhere, Category = "Monitoring|PerformanceTracking")
 	FString TraceChannels = TEXT("cpu,gpu,frame,log,bookmark,screenshot,region"); // TODO: make this bitmap thingy with all possible values
 	/*
 	 * Number of recent frames kept for FPS averaging

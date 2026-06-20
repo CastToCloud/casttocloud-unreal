@@ -77,6 +77,20 @@ extern ENGINE_API float GAverageFPS;
 
 void UCtcPerformanceMonitoringSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
+	if (const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>())
+	{
+		FString Channels = Settings->TraceChannels;
+		UE_LOG(LogCtcMetrics, Verbose, TEXT("Starting trace to memory with channels: %s"), *Channels);
+
+		FTraceAuxiliary::FOptions Options;
+		const bool bTraceStart = FTraceAuxiliary::Start(FTraceAuxiliary::EConnectionType::None, nullptr, *Channels, &Options, LogCtcMetrics);
+
+		if (!bTraceStart)
+		{
+			UE_LOG(LogCtcMetrics, Error, TEXT("Failed to start trace to memory."));
+		}
+	}
+
 	GEngine->OnHitchDetectedDelegate.AddUObject(this, &UCtcPerformanceMonitoringSubsystem::OnHitchDetected);
 	FSlateApplication::Get().OnApplicationActivationStateChanged().AddUObject(this, &UCtcPerformanceMonitoringSubsystem::OnApplicationActivationStateChanged);
 }
