@@ -10,7 +10,13 @@ on:
 
 jobs:
   plugin-ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        ue_version: ["5.5", "5.6", "5.7", "5.8"]
     uses:  outoftheboxplugins/BuildMachines/.github/workflows/compile-plugin.yml@master
+    with:
+      ue_version: ${{ matrix.ue_version }}
     secrets:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
