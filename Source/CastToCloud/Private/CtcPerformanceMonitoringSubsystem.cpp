@@ -134,9 +134,9 @@ void UCtcPerformanceMonitoringSubsystem::StartTracing()
 	FString Channels = Settings->TraceChannels;
 	UE_LOG(LogCtcMetrics, Verbose, TEXT("Starting trace to memory with channels: %s"), *Channels);
 
-	//NOTE: The return value of FTraceAuxiliary::Start is unreliable (returning false for successfully started in memory traces).  
+	// NOTE: The return value of FTraceAuxiliary::Start is unreliable (returning false for successfully started in memory traces).
 	FTraceAuxiliary::FOptions Options;
-	FTraceAuxiliary::Start(FTraceAuxiliary::EConnectionType::None, nullptr, *Channels, &Options, LogCtcMetrics); 
+	FTraceAuxiliary::Start(FTraceAuxiliary::EConnectionType::None, nullptr, *Channels, &Options, LogCtcMetrics);
 }
 
 void UCtcPerformanceMonitoringSubsystem::TickLowFPSDetection()
