@@ -34,6 +34,7 @@ private:
 	virtual UWorld* GetTickableGameObjectWorld() const override;
 	// ~FTickableGameObject interface
 
+	void StartTracing();
 	void TickLowFPSDetection();
 	void TickDebug();
 

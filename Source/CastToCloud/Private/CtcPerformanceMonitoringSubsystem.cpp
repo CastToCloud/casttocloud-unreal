@@ -77,22 +77,10 @@ extern ENGINE_API float GAverageFPS;
 
 void UCtcPerformanceMonitoringSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	if (const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>())
-	{
-		FString Channels = Settings->TraceChannels;
-		UE_LOG(LogCtcMetrics, Verbose, TEXT("Starting trace to memory with channels: %s"), *Channels);
-
-		FTraceAuxiliary::FOptions Options;
-		const bool bTraceStart = FTraceAuxiliary::Start(FTraceAuxiliary::EConnectionType::None, nullptr, *Channels, &Options, LogCtcMetrics);
-
-		if (!bTraceStart)
-		{
-			UE_LOG(LogCtcMetrics, Error, TEXT("Failed to start trace to memory."));
-		}
-	}
-
 	GEngine->OnHitchDetectedDelegate.AddUObject(this, &UCtcPerformanceMonitoringSubsystem::OnHitchDetected);
 	FSlateApplication::Get().OnApplicationActivationStateChanged().AddUObject(this, &UCtcPerformanceMonitoringSubsystem::OnApplicationActivationStateChanged);
+
+	StartTracing();
 }
 
 bool UCtcPerformanceMonitoringSubsystem::ShouldCreateSubsystem(UObject* Outer) const
@@ -127,6 +115,28 @@ TStatId UCtcPerformanceMonitoringSubsystem::GetStatId() const
 UWorld* UCtcPerformanceMonitoringSubsystem::GetTickableGameObjectWorld() const
 {
 	return CastToCloudSharedHelpers::GetCurrentWorld();
+}
+
+void UCtcPerformanceMonitoringSubsystem::StartTracing()
+{
+	const UCtcSharedSettings* Settings = GetDefault<UCtcSharedSettings>();
+	if (!Settings)
+	{
+		return;
+	}
+
+	if (FTraceAuxiliary::IsConnected())
+	{
+		// We cannot trace if that's already running
+		return;
+	}
+
+	FString Channels = Settings->TraceChannels;
+	UE_LOG(LogCtcMetrics, Verbose, TEXT("Starting trace to memory with channels: %s"), *Channels);
+
+	//NOTE: The return value of FTraceAuxiliary::Start is unreliable (returning false for successfully started in memory traces).  
+	FTraceAuxiliary::FOptions Options;
+	FTraceAuxiliary::Start(FTraceAuxiliary::EConnectionType::None, nullptr, *Channels, &Options, LogCtcMetrics); 
 }
 
 void UCtcPerformanceMonitoringSubsystem::TickLowFPSDetection()
